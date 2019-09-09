@@ -1,0 +1,17 @@
+
+MathOptInterface (MOI)MOI is an interface between specific solvers and JuMPUntil JuMP 0.18, it used MathProgBase (MPB), but it was replaced by the more flexible MOI in juMP 0.19.https://github.com/JuliaOpt/MathOptInterface.jl
+
+
+LinQuadOptInterface (LQOI)
+For linear and quadratic programs, JuMP (normally) utilizes another layer between the MOI and the solver wrapper
+https://github.com/JuliaOpt/LinQuadOptInterface.jl StochasticPrograms
+https://github.com/martinbiel/StochasticPrograms.jl
+ 
+StructJuMP
+https://github.com/StructJuMP/StructJuMP.jl
+
+https://discourse.julialang.org/t/mathoptinterface-and-upcoming-breaking-changes-in-jump-0-19/4874 
+
+https://github.com/JuliaOpt/JuMP.jl   
+
+https://www.tandfonline.com/doi/full/10.1080/10556780902883184  
