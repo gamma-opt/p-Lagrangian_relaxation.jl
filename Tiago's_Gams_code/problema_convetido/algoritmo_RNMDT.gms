@@ -56,7 +56,7 @@ $offtext
                  );
                  LB = max(LB,FO_atual);
                  display FO_atual;
-* fixa o valor das vari√°veis inteiras originais do problema
+* fixa o valor das vari·veis inteiras originais do problema
                  y_fixed(e) = y.l(e);
 
                  solve Fixed min FO us NLP;
