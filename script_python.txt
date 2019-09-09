@@ -1,0 +1,39 @@
+import csv
+import os
+import subprocess
+
+with open('C:\\Users\\TA\\Desktop\\problems QCQP\\problema_convetido\\results_Total.csv', 'w', newline='') as csvescreve:
+    writer = csv.writer(csvescreve, delimiter=' ', quotechar=';', quoting=csv.QUOTE_MINIMAL)
+    with open('C:\\Users\\TA\\Desktop\\problems QCQP\\problema_convetido\\Problemas.csv', 'r') as csvfile:
+        data = csv.reader(csvfile)
+        for line in data:
+            print("\n")
+            print("+++++++++++++++++++")
+            print(line)
+            print("\n")
+            if len(line) > 0:
+                with open('C:\\Users\\TA\\Desktop\\problems QCQP\\problema_convetido\\problema.csv', 'w', newline='') as csvescreve2:
+                    writer2 = csv.writer(csvescreve2, delimiter=' ', quotechar=';', quoting=csv.QUOTE_MINIMAL)
+                    writer2.writerow(line)
+                #\"C:\\Program Files\\MATLAB\\R2012a\\bin\\matlab.exe\"
+                matlab = 'C:\\Users\\TA\\Desktop\\problems QCQP\\problema_convetido\chama_matlab.bat'
+                #print(matlab)
+                subprocess.call(matlab)
+                gams = '"C:\\GAMS\\win64\\23.9\\gams.exe" "C:\\Users\\TA\\Desktop\\problems QCQP\\problema_convetido\\Untitled_RNMD.gms"'
+                print(gams)
+                subprocess.call(gams)
+            print("\n")
+            print(line)
+            print("+++++++++++++++++++")
+            print("\n\n")
+            with open('C:\\Users\\TA\\Desktop\\problems QCQP\\problema_convetido\\results.csv', 'r') as csvresult:
+                data_result = csv.reader(csvresult)
+                time = data_result.__next__()
+                LB = data_result.__next__()
+                UB = data_result.__next__()
+                iter_i = data_result.__next__()
+                iter_o = data_result.__next__()
+                iter_tot = data_result.__next__()
+                p = data_result.__next__()
+                writer.writerow([line[0], time[0], LB[0], UB[0], iter_i[0], iter_o[0], iter_tot[0], p[0]])
+                csvescreve.flush()
