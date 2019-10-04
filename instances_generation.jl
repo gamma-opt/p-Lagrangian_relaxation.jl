@@ -1,11 +1,11 @@
 using LinearAlgebra, SparseArrays, JuMP, Gurobi,  Random
 
-number_of_scenarios = 1000
-number_of_continuos_decision_variables = 100
+number_of_scenarios = 3
+number_of_continuos_decision_variables = 4
 number_of_integer_decision_variables = number_of_continuos_decision_variables
 number_of_constrains = 3 # number of the constraints for each of the scenario
 Qdensity = 0.6 # dencity of the matrices
-Max_value_for_matrix_elements = 10
+Max_value_for_matrix_elements = 100
 x_limits = [0 100] # max and min values for the continuous variables' boundaries
 y_limits = [0 100] # max and min values for the integer variables' boundaries
 
@@ -81,7 +81,7 @@ constraint_Qs = Array{Any}(undef, 1, number_of_scenarios)
 # generating affine functions' coefficients for the left hand side of the constraint for each of the scenario
 constraint_Fs = Array{Any}(undef, 1, number_of_scenarios)
 
-[ constraint_Fs[i] = [ rand(2, number_of_continuos_decision_variables)
+[ constraint_Fs[i] = [ Max_value_for_matrix_elements .* rand(2, number_of_continuos_decision_variables)
     for j = 1:number_of_constrains ] for i = 1:number_of_scenarios ]
 # first row - x_coeficients (continuous variables)
 # second row - y_coeficients (iteger variables)
@@ -99,7 +99,7 @@ objective_Qs = Array{Any}(undef, 1, number_of_scenarios)
 # generating linear functions' coefficients for the objective for each of the scenario
 objective_Fs = Array{Any}(undef, 1, number_of_scenarios)
 
-[ objective_Fs[i] = [rand(2, number_of_continuos_decision_variables) ; [rand(1,1) zeros(1, number_of_continuos_decision_variables-1)] ] for i = 1:number_of_scenarios  ]
+[ objective_Fs[i] = Max_value_for_matrix_elements .* [rand(2, number_of_continuos_decision_variables) ; [rand(1,1) zeros(1, number_of_continuos_decision_variables-1)] ] for i = 1:number_of_scenarios  ]
 # first row - x_coeficients (continuous variables)
 # second row - y_coeficients (iteger variables)
 # third row  - constant
@@ -117,7 +117,6 @@ subproblem  = Array{Any}(undef, 1, number_of_scenarios)
 
 # formulating the subproblems
 for s = 1:number_of_scenarios
-
     global subproblem[s] = Model(with_optimizer(Gurobi.Optimizer))
     @variable(subproblem[s], x[1 : number_of_continuos_decision_variables])
     @variable(subproblem[s], y[1 : number_of_integer_decision_variables], Int )
