@@ -1,9 +1,9 @@
-using LinearAlgebra, SparseArrays, JuMP, Gurobi
+using LinearAlgebra, SparseArrays, JuMP, Gurobi,  Random
 
 number_of_scenarios = 3
 number_of_continuos_decision_variables = 4
 number_of_integer_decision_variables = number_of_continuos_decision_variables
-number_of_constrains = 4 # number of the constraints for each of the scenario
+number_of_constrains = 2 # number of the constraints for each of the scenario
 Qdensity = 0.6 # dencity of the matrices
 Max_value_for_matrix_elements = 5
 #---------------generating constraints for the scenarios------------------------
@@ -18,7 +18,7 @@ function matrix_generation(density, dimention, max_range, PSD)
     # it will have that predefined density
 
     # separately generating diagonal elements not equal to zero (to be able to create PSD after)
-    diagonal_elements  = (max_range) .* rand(1, dimention)
+    diagonal_elements  = (max_range) .* round.(rand(1, dimention), digits = 1)
 
     # calculating the number of non-zero elements in the upper diagonal part
     # depending on the predefined density
@@ -27,7 +27,7 @@ function matrix_generation(density, dimention, max_range, PSD)
 
     # creating one-dimensional array containing an abovementioned number of non zero elements,
     # filling the rest with zeros and shuffling the array
-    upper_triangular_elements  = shuffle!([(max_range .* rand(1, number_of_other_non_zero_elements)) zeros(1, Int(dimention*(dimention-1)/2) - number_of_other_non_zero_elements) ] )
+    upper_triangular_elements  = shuffle!([(max_range .* round.(rand(1, number_of_other_non_zero_elements), digits = 1 )) zeros(1, Int(dimention*(dimention-1)/2) - number_of_other_non_zero_elements) ] )
 
     # creating final matrix with zero elements
     Q = zeros(dimention, dimention)
@@ -50,7 +50,7 @@ function matrix_generation(density, dimention, max_range, PSD)
     if PSD == "yes"
         for i = 1:dimention
             #Q[i,i] = Q[i,i] > sum(Q[i,i+1:end]) ? Q[i,i] : sum(Q[i,i+1:end]) + 1
-            Q[i,i] = Q[i,i] > (sum(Q[i, 1:i-1]) + sum(Q[i, i+1:end])) ? Q[i,i] : sum(Q[i,i+1:end]) + 1
+            Q[i,i] = Q[i,i] > (sum(Q[i, 1:i-1]) + sum(Q[i, i+1:end])) ? Q[i,i] : sum(Q[i,i+1:end])*2 + 100
         end
     end
 
@@ -106,14 +106,16 @@ subproblem  = Array{Any}(undef, 1, number_of_scenarios)
 # formulating the subproblems
 for s = 1:number_of_scenarios
 
-    global subproblem[s] = Model(with_optimizer(Gurobi.Optimizer, OutputFlag=0))
+    global subproblem[s] = Model(with_optimizer(Gurobi.Optimizer, BarQCPConvTol = 0.4, PSDTol = 100))
     @variable(subproblem[s], x[1 : number_of_continuos_decision_variables])
-    @variable(subproblem[s], y[1 : number_of_integer_decision_variables])
+    @variable(subproblem[s], y[1 : number_of_integer_decision_variables], Int )
     @objective(subproblem[s], Max,  x' * objective_Qs[s] * x + sum( ( x .* objective_Fs[s][1, :] ) .+ ( y .* objective_Fs[s][2, :] ) )   + objective_Fs[s][3, 1] )
-      #    +  sum( f_lambda_lagrangian(vector_of_lambda_lagrangian, s ) .* x ) )
+         # +  sum( f_lambda_lagrangian(vector_of_lambda_lagrangian, s ) .* x ) )
 
     for i = 1:number_of_constrains
         @constraint(subproblem[s], x' * constraint_Qs[s][i] * x + sum( ( x .* constraint_Fs[s][i][1, :] ) .+ ( y .* constraint_Fs[s][i][2, :] ) ) <= 0 )
     end
 
 end
+
+optimize!(subproblem[1])
