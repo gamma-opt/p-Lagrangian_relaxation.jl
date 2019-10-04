@@ -1,11 +1,24 @@
 using LinearAlgebra, SparseArrays, JuMP, Gurobi,  Random
 
-number_of_scenarios = 3
-number_of_continuos_decision_variables = 4
+number_of_scenarios = 1000
+number_of_continuos_decision_variables = 100
 number_of_integer_decision_variables = number_of_continuos_decision_variables
-number_of_constrains = 2 # number of the constraints for each of the scenario
+number_of_constrains = 3 # number of the constraints for each of the scenario
 Qdensity = 0.6 # dencity of the matrices
-Max_value_for_matrix_elements = 5
+Max_value_for_matrix_elements = 10
+x_limits = [0 100] # max and min values for the continuous variables' boundaries
+y_limits = [0 100] # max and min values for the integer variables' boundaries
+
+#---------------generating constraints for the variables------------------------
+
+x_boundaries = [ x_limits[1]*ones( number_of_continuos_decision_variables, 1 ) rand(
+    Int( (x_limits[2] - x_limits[1]) / 2 ) : x_limits[2],
+    number_of_integer_decision_variables, 1 ) ]
+
+y_boundaries = [ y_limits[1]*ones( number_of_integer_decision_variables, 1 ) rand(
+    Int( (y_limits[2] - y_limits[1]) / 2 ) : y_limits[2],
+    number_of_integer_decision_variables, 1 ) ]
+
 #---------------generating constraints for the scenarios------------------------
 
 # auxiliary function for generating quadratic matrices for cosnstraints and obejctive with predefined densiity
@@ -50,13 +63,12 @@ function matrix_generation(density, dimention, max_range, PSD)
     if PSD == "yes"
         for i = 1:dimention
             #Q[i,i] = Q[i,i] > sum(Q[i,i+1:end]) ? Q[i,i] : sum(Q[i,i+1:end]) + 1
-            Q[i,i] = Q[i,i] > (sum(Q[i, 1:i-1]) + sum(Q[i, i+1:end])) ? Q[i,i] : sum(Q[i,i+1:end])*2 + 100
+            Q[i,i] = Q[i,i] > (sum(Q[i, 1:i-1]) + sum(Q[i, i+1:end])) ? Q[i,i] : sum(Q[i,i+1:end])*2 + 1000
         end
     end
 
     return Q
 end
-
 
 # generating matrices Qsi for the left hand side of the contraint for each of the scenario
 constraint_Qs = Array{Any}(undef, 1, number_of_scenarios)
@@ -106,16 +118,19 @@ subproblem  = Array{Any}(undef, 1, number_of_scenarios)
 # formulating the subproblems
 for s = 1:number_of_scenarios
 
-    global subproblem[s] = Model(with_optimizer(Gurobi.Optimizer, BarQCPConvTol = 0.4, PSDTol = 100))
+    global subproblem[s] = Model(with_optimizer(Gurobi.Optimizer))
     @variable(subproblem[s], x[1 : number_of_continuos_decision_variables])
     @variable(subproblem[s], y[1 : number_of_integer_decision_variables], Int )
-    @objective(subproblem[s], Max,  x' * objective_Qs[s] * x + sum( ( x .* objective_Fs[s][1, :] ) .+ ( y .* objective_Fs[s][2, :] ) )   + objective_Fs[s][3, 1] )
-         # +  sum( f_lambda_lagrangian(vector_of_lambda_lagrangian, s ) .* x ) )
+    @objective(subproblem[s], Max,  x' * objective_Qs[s] * x + sum( ( x .* objective_Fs[s][1, :] ) .+ ( y .* objective_Fs[s][2, :] ) )   + objective_Fs[s][3, 1]
+          +  sum( f_lambda_lagrangian(vector_of_lambda_lagrangian, s ) .* x ) )
 
     for i = 1:number_of_constrains
         @constraint(subproblem[s], x' * constraint_Qs[s][i] * x + sum( ( x .* constraint_Fs[s][i][1, :] ) .+ ( y .* constraint_Fs[s][i][2, :] ) ) <= 0 )
     end
-
+        @constraint(subproblem[s], x_boundaries[:, 1] .<= x .<= x_boundaries[:, 2])
+        @constraint(subproblem[s], y_boundaries[:, 1] .<= y .<= y_boundaries[:, 2])
 end
+
+
 
 optimize!(subproblem[1])
