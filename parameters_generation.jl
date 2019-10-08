@@ -1,28 +1,31 @@
 using LinearAlgebra, SparseArrays, JuMP, Gurobi,  Random
 
 number_of_scenarios = 3
-number_of_continuos_decision_variables = 4
+number_of_continuos_decision_variables = 3
 number_of_integer_decision_variables = number_of_continuos_decision_variables
-number_of_constrains = 3 # number of the constraints for each of the scenario
+number_of_constrains = 2 # number of the constraints for each of the scenario
 Qdensity = 0.6 # dencity of the matrices
-Max_value_for_matrix_elements = 100
+Max_value_for_matrix_elements = 10
+Min_value_for_matrix_elements = 0
 x_limits = [0 100] # max and min values for the continuous variables' boundaries
 y_limits = [0 100] # max and min values for the integer variables' boundaries
+auxilary_constant_for_affine_part = 100
+#Random.seed!(0)
 
 #---------------generating constraints for the variables------------------------
 
 x_boundaries = [ x_limits[1]*ones( number_of_continuos_decision_variables, 1 ) rand(
-    Int( (x_limits[2] - x_limits[1]) / 2 ) : x_limits[2],
+    Int( round( (x_limits[2] - x_limits[1]) / 2 ) ) : x_limits[2],
     number_of_integer_decision_variables, 1 ) ]
 
 y_boundaries = [ y_limits[1]*ones( number_of_integer_decision_variables, 1 ) rand(
-    Int( (y_limits[2] - y_limits[1]) / 2 ) : y_limits[2],
+    Int( round( (y_limits[2] - y_limits[1]) / 2 ) ) : y_limits[2],
     number_of_integer_decision_variables, 1 ) ]
 
-#---------------generating constraints for the scenarios------------------------
+#---------------generating quadratic constraints for the scenarios--------------
 
 # auxiliary function for generating quadratic matrices for cosnstraints and obejctive with predefined densiity
-function matrix_generation(density, dimention, max_range, PSD)
+function quadratic_matrix_generation(density, dimention, min_range, max_range, PSD)
 
     # creating the matrix of predefined density,
     # taking into account that this density is defined for the case when a matrix is symmetrical
@@ -31,7 +34,7 @@ function matrix_generation(density, dimention, max_range, PSD)
     # it will have that predefined density
 
     # separately generating diagonal elements not equal to zero (to be able to create PSD after)
-    diagonal_elements  = (max_range) .* round.(rand(1, dimention), digits = 1)
+    diagonal_elements  = max_range .* round.(rand(1, dimention), digits = 1)
 
     # calculating the number of non-zero elements in the upper diagonal part
     # depending on the predefined density
@@ -40,7 +43,7 @@ function matrix_generation(density, dimention, max_range, PSD)
 
     # creating one-dimensional array containing an abovementioned number of non zero elements,
     # filling the rest with zeros and shuffling the array
-    upper_triangular_elements  = shuffle!([(max_range .* round.(rand(1, number_of_other_non_zero_elements), digits = 1 )) zeros(1, Int(dimention*(dimention-1)/2) - number_of_other_non_zero_elements) ] )
+    upper_triangular_elements  = shuffle!([(min_range .+ (max_range - min_range) .* round.(rand(1, number_of_other_non_zero_elements), digits = 1 )) zeros(1, Int(dimention*(dimention-1)/2) - number_of_other_non_zero_elements) ] )
 
     # creating final matrix with zero elements
     Q = zeros(dimention, dimention)
@@ -59,11 +62,13 @@ function matrix_generation(density, dimention, max_range, PSD)
         end
     end
 
-
+    # if the matrix is supposed to be a PSD then check if the diagonal elements are bigger
+    # than the sum of the elements on the same row and if it's not the case increase it by
+    # a bigger enough number
     if PSD == "yes"
         for i = 1:dimention
             #Q[i,i] = Q[i,i] > sum(Q[i,i+1:end]) ? Q[i,i] : sum(Q[i,i+1:end]) + 1
-            Q[i,i] = Q[i,i] > (sum(Q[i, 1:i-1]) + sum(Q[i, i+1:end])) ? Q[i,i] : sum(Q[i,i+1:end])*2 + 1000
+            Q[i,i] = Q[i,i] > (sum(abs.(Q[i, 1:i-1])) + sum(abs.(Q[i, i+1:end]))) ? Q[i,i] : (sum(abs.(Q[i, 1:i-1])) + sum(abs.(Q[i, i+1:end]))) +1000
         end
     end
 
@@ -75,16 +80,39 @@ constraint_Qs = Array{Any}(undef, 1, number_of_scenarios)
 
 #[ constraint_Qs[i] = [ Matrix(Symmetric(sprand(number_of_continuos_decision_variables, number_of_continuos_decision_variables, Qdensity)))
     #for j = 1 : number_of_constrains] for i = 1:number_of_scenarios ]
-[ constraint_Qs[i] = [ matrix_generation(Qdensity, number_of_integer_decision_variables, Max_value_for_matrix_elements, "yes")
+[ constraint_Qs[i] = [ quadratic_matrix_generation(Qdensity, number_of_integer_decision_variables, Min_value_for_matrix_elements, Max_value_for_matrix_elements, "yes")
         for j = 1 : number_of_constrains] for i = 1:number_of_scenarios ]
 
 # generating affine functions' coefficients for the left hand side of the constraint for each of the scenario
-constraint_Fs = Array{Any}(undef, 1, number_of_scenarios)
+constraint_fs = Array{Any}(undef, 1, number_of_scenarios)
 
-[ constraint_Fs[i] = [ Max_value_for_matrix_elements .* rand(2, number_of_continuos_decision_variables)
+[ constraint_fs[i] = [ Min_value_for_matrix_elements .+ (Max_value_for_matrix_elements - Min_value_for_matrix_elements) .* rand(2, number_of_continuos_decision_variables)
     for j = 1:number_of_constrains ] for i = 1:number_of_scenarios ]
 # first row - x_coeficients (continuous variables)
 # second row - y_coeficients (iteger variables)
+
+#---------------generating non-anticipativity conditions for the scenarios------
+
+function nonanticipativity_matrix_generation(number_of_scenarios, number_of_variables, scenario_counter, reference_scenario)
+
+    if scenario_counter == reference_scenario
+        matrix  = ones(number_of_scenarios - 1, number_of_variables)
+    else
+        matrix = zeros(number_of_scenarios - 1, number_of_variables)
+        matrix[ (scenario_counter < reference_scenario ? scenario_counter : scenario_counter -1) , :] =   -1 .* ones(1, number_of_variables)
+    end
+
+    return matrix
+
+end
+
+constraint_A1 = Array{Any}(undef, 1, number_of_scenarios)
+[ constraint_A1[i] = nonanticipativity_matrix_generation(number_of_scenarios, number_of_continuos_decision_variables, i, 1) for i = 1 : number_of_scenarios]
+
+constraint_B1 = Array{Any}(undef, 1, number_of_scenarios)
+[ constraint_B1[i] = nonanticipativity_matrix_generation(number_of_scenarios, number_of_integer_decision_variables, i, 1) for i = 1 : number_of_scenarios]
+
+constraint_b1 = zeros(number_of_scenarios - 1, 1)
 
 #---------------generating obejctive fucntions for the scenarios----------------
 
@@ -93,43 +121,14 @@ objective_Qs = Array{Any}(undef, 1, number_of_scenarios)
 
 #[ objective_Qs[i] =  Matrix(Symmetric(sprand(number_of_continuos_decision_variables, number_of_continuos_decision_variables, Qdensity)))
      #for i = 1:number_of_scenarios ]
-[ objective_Qs[i] = matrix_generation(Qdensity, number_of_integer_decision_variables, Max_value_for_matrix_elements, "yes")
+[ objective_Qs[i] = quadratic_matrix_generation(Qdensity, number_of_integer_decision_variables, Min_value_for_matrix_elements, Max_value_for_matrix_elements, "yes")
      for i = 1:number_of_scenarios ]
 
 # generating linear functions' coefficients for the objective for each of the scenario
-objective_Fs = Array{Any}(undef, 1, number_of_scenarios)
+objective_fs = Array{Any}(undef, 1, number_of_scenarios)
 
-[ objective_Fs[i] = Max_value_for_matrix_elements .* [rand(2, number_of_continuos_decision_variables) ; [rand(1,1) zeros(1, number_of_continuos_decision_variables-1)] ] for i = 1:number_of_scenarios  ]
+[ objective_fs[i] = Min_value_for_matrix_elements .+ (Max_value_for_matrix_elements - Min_value_for_matrix_elements) .* [rand(2, number_of_continuos_decision_variables) ;
+    [rand(1,1) zeros(1, number_of_continuos_decision_variables-1)] ] for i = 1:number_of_scenarios  ]
 # first row - x_coeficients (continuous variables)
 # second row - y_coeficients (iteger variables)
 # third row  - constant
-
-#--------------generating JuMP subproblems--------------------------------------
-
-# auxiliary function for Lagrangian multipliers update
-f_lambda_lagrangian(lambda_lagrangian, dec_index) = (dec_index == 1 ? sum(lambda_lagrangian[1:end]) : - lambda_lagrangian[dec_index-1])
-
-vector_of_lambda_lagrangian = Array{Any}(undef, 1, number_of_scenarios-1)
-[ vector_of_lambda_lagrangian[i] = 0.5 .+ 1.0 .* rand(1, number_of_continuos_decision_variables) for i = 1:number_of_scenarios-1 ]
-
-# creatinf the array of subproblems
-subproblem  = Array{Any}(undef, 1, number_of_scenarios)
-
-# formulating the subproblems
-for s = 1:number_of_scenarios
-    global subproblem[s] = Model(with_optimizer(Gurobi.Optimizer))
-    @variable(subproblem[s], x[1 : number_of_continuos_decision_variables])
-    @variable(subproblem[s], y[1 : number_of_integer_decision_variables], Int )
-    @objective(subproblem[s], Max,  x' * objective_Qs[s] * x + sum( ( x .* objective_Fs[s][1, :] ) .+ ( y .* objective_Fs[s][2, :] ) )   + objective_Fs[s][3, 1]
-          +  sum( f_lambda_lagrangian(vector_of_lambda_lagrangian, s ) .* x ) )
-
-    for i = 1:number_of_constrains
-        @constraint(subproblem[s], x' * constraint_Qs[s][i] * x + sum( ( x .* constraint_Fs[s][i][1, :] ) .+ ( y .* constraint_Fs[s][i][2, :] ) ) <= 0 )
-    end
-        @constraint(subproblem[s], x_boundaries[:, 1] .<= x .<= x_boundaries[:, 2])
-        @constraint(subproblem[s], y_boundaries[:, 1] .<= y .<= y_boundaries[:, 2])
-end
-
-
-
-optimize!(subproblem[1])
