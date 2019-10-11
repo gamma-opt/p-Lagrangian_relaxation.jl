@@ -27,7 +27,7 @@ original_problem = Model(with_optimizer(Gurobi.Optimizer))
     y_boundaries[:, 1] .<= y[:, s] .<= y_boundaries[:, 2])
 
 # constraint 4-5
-@constraint(original_problem, sum( constraint_A1[s] * x[:, s] + constraint_B1[s] * y[:, s] for s = 1 : number_of_scenarios) .== constraint_b1)
+#@constraint(original_problem, sum( constraint_A1[s] * x[:, s] + constraint_B1[s] * y[:, s] for s = 1 : number_of_scenarios) .== constraint_b1)
 
 #--------------generating mixed-integer based relaxations-----------------------
 
@@ -35,7 +35,7 @@ original_problem = Model(with_optimizer(Gurobi.Optimizer))
 # Enhancing the normalized multiparametric disaggregation
 # technique for mixed-integer quadratic programming
 
-p = -10
+p = -4
 
 RNMDT_problem = Model(with_optimizer(Gurobi.Optimizer))
 
@@ -121,8 +121,8 @@ end
     y_boundaries[:, 1] .<= y[:, s] .<= y_boundaries[:, 2])
 
 # non-anticipativity condition from original problem 4-5
-@constraint( RNMDT_problem, sum( constraint_A1[s] * x[:, s] + constraint_B1[s] * y[:, s] for s = 1 : number_of_scenarios) .== constraint_b1)
-
+@constraint( RNMDT_problem, sum( constraint_A1[s] .* repeat(x[:, s], number_of_scenarios - 1) for s = 1 : number_of_scenarios ) .== constraint_b1 )
+@constraint( RNMDT_problem, sum( constraint_B1[s] .* repeat(y[:, s], number_of_scenarios - 1) for s = 1 : number_of_scenarios ) .== constraint_b1 )
 #--------------generating JuMP subproblems--------------------------------------
 
 # auxiliary function for Lagrangian multipliers update
@@ -188,7 +188,7 @@ end
 
 
 
-print( sum( constraint_A1[s] * x[:, s] + constraint_B1[s] * y[:, s] for s = 1 : number_of_scenarios) .== constraint_b1 )
+#print( sum( constraint_A1[s] * x[:, s] + constraint_B1[s] * y[:, s] for s = 1 : number_of_scenarios) .== constraint_b1 )
 
 
 for s = 1: number_of_scenarios

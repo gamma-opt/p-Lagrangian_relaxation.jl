@@ -1,7 +1,7 @@
-using LinearAlgebra, SparseArrays, JuMP, Gurobi,  Random
+using LinearAlgebra, SparseArrays, JuMP, Gurobi
 
-number_of_scenarios = 2
-number_of_continuos_decision_variables = 2
+number_of_scenarios = 3
+number_of_continuos_decision_variables = 4
 number_of_integer_decision_variables = number_of_continuos_decision_variables
 number_of_constrains = 2 # number of the constraints for each of the scenario
 Qdensity = 0.6 # dencity of the matrices
@@ -96,10 +96,12 @@ constraint_fs = Array{Any}(undef, 1, number_of_scenarios)
 function nonanticipativity_matrix_generation(number_of_scenarios, number_of_variables, scenario_counter, reference_scenario)
 
     if scenario_counter == reference_scenario
-        matrix  = ones(number_of_scenarios - 1, number_of_variables)
+        matrix  = ones( (number_of_scenarios - 1) * number_of_variables, 1 )
     else
-        matrix = zeros(number_of_scenarios - 1, number_of_variables)
-        matrix[ (scenario_counter < reference_scenario ? scenario_counter : scenario_counter -1) , :] =   -1 .* ones(1, number_of_variables)
+        matrix = zeros( (number_of_scenarios - 1) * number_of_variables, 1 )
+        indices = (scenario_counter < reference_scenario) ? ( (scenario_counter-1) * number_of_variables + 1 : (scenario_counter-1) * number_of_variables + number_of_variables) : ( (scenario_counter - 2) * number_of_variables + 1: (scenario_counter - 2) * number_of_variables + number_of_variables)
+        print("scenario = $scenario_counter, indixes = $indices\n")
+        matrix[indices, 1] =  -1 .* ones(number_of_variables, 1)
     end
 
     return matrix
@@ -112,7 +114,7 @@ constraint_A1 = Array{Any}(undef, 1, number_of_scenarios)
 constraint_B1 = Array{Any}(undef, 1, number_of_scenarios)
 [ constraint_B1[i] = nonanticipativity_matrix_generation(number_of_scenarios, number_of_integer_decision_variables, i, 1) for i = 1 : number_of_scenarios]
 
-constraint_b1 = zeros(number_of_scenarios - 1, 1)
+constraint_b1 = zeros((number_of_scenarios - 1) * number_of_continuos_decision_variables, 1)
 
 #---------------generating obejctive fucntions for the scenarios----------------
 
