@@ -1,7 +1,7 @@
 using LinearAlgebra, SparseArrays, JuMP, Gurobi,  Random
 
-number_of_scenarios = 3
-number_of_continuos_decision_variables = 3
+number_of_scenarios = 2
+number_of_continuos_decision_variables = 2
 number_of_integer_decision_variables = number_of_continuos_decision_variables
 number_of_constrains = 2 # number of the constraints for each of the scenario
 Qdensity = 0.6 # dencity of the matrices
