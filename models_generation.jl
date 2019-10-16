@@ -101,13 +101,13 @@ end
 @constraint( RNMDT_problem, [ i = 1 : number_of_continuos_decision_variables, j = 1 : number_of_continuos_decision_variables, s = 1 : number_of_scenarios ],
     x_boundaries[i, 1] * delta_x_RNMDT[j, s] <= delta_w_RNMDT[i, j, s]) #32
 
-@constraint( RNMDT_problem, [ i = 1 : number_of_continuos_decision_variables, j = 1 : number_of_continuos_decision_variables],
+@constraint( RNMDT_problem, [ i = 1 : number_of_continuos_decision_variables, j = 1 : number_of_continuos_decision_variables, s = 1 : number_of_scenarios],
     delta_w_RNMDT[i, j, s] <= x_boundaries[i, 2] * delta_x_RNMDT[j, s]) # 32
 
-@constraint( RNMDT_problem, [ i = 1 : number_of_continuos_decision_variables, j = 1 : number_of_continuos_decision_variables, l = p : -1],
+@constraint( RNMDT_problem, [ i = 1 : number_of_continuos_decision_variables, j = 1 : number_of_continuos_decision_variables, l = p : -1, s = 1 : number_of_scenarios],
     x_boundaries[i, 1] * z_RNMDT[j, l, s]  <= x_heat_RNMDT[i, j, l, s]) # 33
 
-@constraint( RNMDT_problem, [ i = 1 : number_of_continuos_decision_variables, j = 1 : number_of_continuos_decision_variables, l = p : -1],
+@constraint( RNMDT_problem, [ i = 1 : number_of_continuos_decision_variables, j = 1 : number_of_continuos_decision_variables, l = p : -1, s = 1 : number_of_scenarios],
     x_heat_RNMDT[i, j, l, s] <= x_boundaries[i, 2] * z_RNMDT[j, l, s]) # 33
 
 @constraint( RNMDT_problem, [ i = 1 : number_of_continuos_decision_variables, j = 1 : number_of_continuos_decision_variables, l = p : -1, s = 1:number_of_scenarios],
@@ -178,20 +178,60 @@ for s = 1:number_of_scenarios
             +  sum( f_lambda_lagrangian(vector_of_mu_lagrangian, s ) .* y )
                 )
 
-    # objective with relaxed
-    #@objective(subproblem[s], Max,  x' * objective_Qs[s] * x + sum( ( x .* objective_fs[s][1, :] ) .+ ( y .* objective_fs[s][2, :] ) ) + objective_fs[s][3, 1]
-        #+  sum( f_lambda_lagrangian(vector_of_lambda_lagrangian, s ) .* y ) )
+    @constraint( subproblem[s], [ r = 1 : number_of_constrains ],
+            sum( constraint_Qs[s][r][i, i] * w_RNMDT[i, i]
+                for i = 1 : number_of_continuos_decision_variables )
+            + 2 * sum(constraint_Qs[s][r][i, j] * w_RNMDT[i, j]
+                for i = 1 : number_of_continuos_decision_variables,
+                j = i+1 : number_of_continuos_decision_variables)
+            + sum( ( x .* constraint_fs[s][r][1, :] )
+                .+ ( y .* constraint_fs[s][r][2, :] ) )
+                - auxilary_constant_for_affine_part <= 0
+            ) # 27
 
-    # constraints 4-2
-    #for i = 1:number_of_constrains
-    #    @constraint(subproblem[s], x' * constraint_Qs[s][i] * x + sum( ( x .* constraint_fs[s][i][1, :] ) .+ ( y .* constraint_fs[s][i][2, :] ) ) <= 0 )
-    #end
+    @constraint( subproblem[s], [ j  = 1 : number_of_continuos_decision_variables],
+        x[j] == (x_boundaries[j, 2] - x_boundaries[j, 1])  *
+            ( sum( 2.0^l * z_RNMDT[j, l] for l = p : -1) + delta_x_RNMDT[j] ) ) # 28
 
-    # constraint 4-3
-    #@constraint(subproblem[s], x_boundaries[:, 1] .<= x .<= x_boundaries[:, 2])
+    @constraint( subproblem[s], [ i  = 1 : number_of_continuos_decision_variables, j = 1 : number_of_continuos_decision_variables ],
+        w_RNMDT[i, j] == (x_boundaries[j, 2] - x_boundaries[j, 1]) *
+            ( sum( 2.0^l * x_heat_RNMDT[i, j, l] for l = p : -1) + delta_w_RNMDT[i, j] ) ) # 29
 
-    # constraint 4-4
-    #@constraint(subproblem[s], y_boundaries[:, 1] .<= y .<= y_boundaries[:, 2])
+    @constraint( subproblem[s], [ j  = 1 : number_of_continuos_decision_variables ],
+        0 <= delta_x_RNMDT[j] <= 2.0^p ) # 30
+
+    @constraint( subproblem[s], [ i = 1 : number_of_continuos_decision_variables, j = 1 : number_of_continuos_decision_variables],
+        2.0^p * ( x[i] - x_boundaries[i, 2] ) + x_boundaries[i, 2] * delta_x_RNMDT[j] <= delta_w_RNMDT[i, j]) # 31
+
+    @constraint( subproblem[s], [ i = 1 : number_of_continuos_decision_variables, j = 1 : number_of_continuos_decision_variables],
+        delta_w_RNMDT[i, j] <= 2.0^p * ( x[i] - x_boundaries[i, 1] ) + x_boundaries[i, 1] * delta_x_RNMDT[j]) # 31
+
+    @constraint( subproblem[s], [ i = 1 : number_of_continuos_decision_variables, j = 1 : number_of_continuos_decision_variables],
+        x_boundaries[i, 1] * delta_x_RNMDT[j] <= delta_w_RNMDT[i, j]) #32
+
+    @constraint( subproblem[s], [ i = 1 : number_of_continuos_decision_variables, j = 1 : number_of_continuos_decision_variables],
+        delta_w_RNMDT[i, j] <= x_boundaries[i, 2] * delta_x_RNMDT[j]) # 32
+
+    @constraint( subproblem[s], [ i = 1 : number_of_continuos_decision_variables, j = 1 : number_of_continuos_decision_variables, l = p : -1],
+        x_boundaries[i, 1] * z_RNMDT[j, l]  <= x_heat_RNMDT[i, j, l]) # 33
+
+    @constraint( subproblem[s], [ i = 1 : number_of_continuos_decision_variables, j = 1 : number_of_continuos_decision_variables, l = p : -1],
+        x_heat_RNMDT[i, j, l] <= x_boundaries[i, 2] * z_RNMDT[j, l]) # 33
+
+    @constraint( subproblem[s], [ i = 1 : number_of_continuos_decision_variables, j = 1 : number_of_continuos_decision_variables, l = p : -1],
+        x_boundaries[i, 1] * (1 - z_RNMDT[j, l]) <= x[i] - x_heat_RNMDT[i, j, l] ) # 34
+
+    @constraint( subproblem[s], [ i = 1 : number_of_continuos_decision_variables, j = 1 : number_of_continuos_decision_variables, l = p : -1],
+        x[i] - x_heat_RNMDT[i, j, l] <= x_boundaries[i, 2] * (1 - z_RNMDT[j, l]) ) # 34
+
+    # box constraints from original problem 4-3
+    @constraint( subproblem[s],
+        x_boundaries[:, 1] .<= x .<= x_boundaries[:, 2])
+
+    # box constraints from original problem 4-4
+    @constraint( subproblem[s],
+        y_boundaries[:, 1] .<= y .<= y_boundaries[:, 2])
+
 end
 
 
@@ -234,4 +274,5 @@ auxiliary_print(RNMDT_problem)
 
 value.(RNMDT_problem[:x])
 value.(RNMDT_problem[:y])
+value.(RNMDT_problem[:w_RNMDT])
 auxiliary_print(original_problem)
