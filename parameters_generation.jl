@@ -1,6 +1,6 @@
 using LinearAlgebra, SparseArrays, JuMP, Gurobi
 
-number_of_scenarios = 3
+number_of_scenarios = 4
 number_of_continuos_decision_variables = 4
 number_of_integer_decision_variables = number_of_continuos_decision_variables
 number_of_constrains = 2 # number of the constraints for each of the scenario

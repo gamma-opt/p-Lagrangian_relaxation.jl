@@ -30,8 +30,8 @@ original_problem = Model(with_optimizer(Gurobi.Optimizer))
 
 # constraint 4-5
 # non-anticipativity condition from original problem 4-5
-@constraint( RNMDT_problem, sum( constraint_A1[s] .* repeat(x[:, s], number_of_scenarios - 1) for s = 1 : number_of_scenarios ) .== constraint_b1 )
-@constraint( RNMDT_problem, sum( constraint_B1[s] .* repeat(y[:, s], number_of_scenarios - 1) for s = 1 : number_of_scenarios ) .== constraint_b1 )
+@constraint( original_problem, sum( constraint_A1[s] .* repeat(x[:, s], number_of_scenarios - 1) for s = 1 : number_of_scenarios ) .== constraint_b1 )
+@constraint( original_problem, sum( constraint_B1[s] .* repeat(y[:, s], number_of_scenarios - 1) for s = 1 : number_of_scenarios ) .== constraint_b1 )
 
 #--------------generating mixed-integer based relaxations-----------------------
 
@@ -69,6 +69,8 @@ end
             .+ ( y[:, s] .* objective_fs[s][2, :] ) )
             + objective_fs[s][3, 1]
     for s = 1 : number_of_scenarios) ) # 26
+
+
 
  @constraint( RNMDT_problem, [ s = 1 : number_of_scenarios, r = 1 : number_of_constrains ],
     sum( constraint_Qs[s][r][i, i] * w_RNMDT[i, i, s]
@@ -146,7 +148,7 @@ subproblem  = Array{Any}(undef, 1, number_of_scenarios)
 # formulating the subproblems
 for s = 1:number_of_scenarios
 
-    global subproblem[s] = Model(with_optimizer(Gurobi.Optimizer))
+    global subproblem[s] = Model(with_optimizer(Gurobi.Optimizer,  OutputFlag = 0))
 
     # continuous decision variables
     @variable( subproblem[s], x[1 : number_of_continuos_decision_variables] )
@@ -257,22 +259,22 @@ end
 
 #print( sum( constraint_A1[s] * x[:, s] + constraint_B1[s] * y[:, s] for s = 1 : number_of_scenarios) .== constraint_b1 )
 
-for s = 1: number_of_scenarios
-    for i = 1:number_of_constrains
-        print("scenario $s, constraint $i, PSD: $(isposdef(constraint_Qs[s][i]))  ")
-        print("matrix = $(constraint_Qs[s][i]) \n \n")
-    end
-end
+#for s = 1: number_of_scenarios
+    #for i = 1:number_of_constrains
+        #print("scenario $s, constraint $i, PSD: $(isposdef(constraint_Qs[s][i]))  ")
+        #print("matrix = $(constraint_Qs[s][i]) \n \n")
+    #end
+#end
 
-for s = 1: number_of_scenarios
-        print("scenario $s,  PSD: $(isposdef(objective_Qs[s])) \n")
-        print("matrix = $(objective_Qs[s]) \n \n")
+#for s = 1: number_of_scenarios
+        #print("scenario $s,  PSD: $(isposdef(objective_Qs[s])) \n")
+        #print("matrix = $(objective_Qs[s]) \n \n")
 
-    end
+    #end
 
-auxiliary_print(RNMDT_problem)
+#auxiliary_print(RNMDT_problem)
 
-value.(RNMDT_problem[:x])
-value.(RNMDT_problem[:y])
-value.(RNMDT_problem[:w_RNMDT])
-auxiliary_print(original_problem)
+#value.(RNMDT_problem[:x])
+#value.(RNMDT_problem[:y])
+#value.(RNMDT_problem[:w_RNMDT])
+#auxiliary_print(original_problem)
