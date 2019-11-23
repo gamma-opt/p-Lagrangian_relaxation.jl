@@ -1,4 +1,4 @@
-using SharedArrays, Distributed, PyPlot
+using SharedArrays, Distributed, Pyplot
 include("models_generation.jl")
 
 # maximum number_of number_of_iterations

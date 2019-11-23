@@ -1,28 +1,4 @@
-using LinearAlgebra, SparseArrays, JuMP, Gurobi
-
-number_of_scenarios = 4
-number_of_continuos_decision_variables = 4
-number_of_integer_decision_variables = number_of_continuos_decision_variables
-number_of_constrains = 2 # number of the constraints for each of the scenario
-Qdensity = 0.6 # dencity of the matrices
-Max_value_for_matrix_elements = 10
-Min_value_for_matrix_elements = 0
-x_limits = [0 100] # max and min values for the continuous variables' boundaries
-y_limits = [0 100] # max and min values for the integer variables' boundaries
-auxilary_constant_for_affine_part = 100
-#Random.seed!(0)
-
-#---------------generating constraints for the variables------------------------
-
-x_boundaries = [ x_limits[1]*ones( number_of_continuos_decision_variables, 1 ) rand(
-    Int( round( (x_limits[2] - x_limits[1]) / 2 ) ) : x_limits[2],
-    number_of_integer_decision_variables, 1 ) ]
-
-y_boundaries = [ y_limits[1]*ones( number_of_integer_decision_variables, 1 ) rand(
-    Int( round( (y_limits[2] - y_limits[1]) / 2 ) ) : y_limits[2],
-    number_of_integer_decision_variables, 1 ) ]
-
-#---------------generating quadratic constraints for the scenarios--------------
+using LinearAlgebra, Random
 
 # auxiliary function for generating quadratic matrices for cosnstraints and obejctive with predefined densiity
 function quadratic_matrix_generation(density, dimention, min_range, max_range, PSD)
@@ -75,24 +51,7 @@ function quadratic_matrix_generation(density, dimention, min_range, max_range, P
     return Q
 end
 
-# generating matrices Qsi for the left hand side of the contraint for each of the scenario
-constraint_Qs = Array{Any}(undef, 1, number_of_scenarios)
-
-#[ constraint_Qs[i] = [ Matrix(Symmetric(sprand(number_of_continuos_decision_variables, number_of_continuos_decision_variables, Qdensity)))
-    #for j = 1 : number_of_constrains] for i = 1:number_of_scenarios ]
-[ constraint_Qs[i] = [ quadratic_matrix_generation(Qdensity, number_of_integer_decision_variables, Min_value_for_matrix_elements, Max_value_for_matrix_elements, "yes")
-        for j = 1 : number_of_constrains] for i = 1:number_of_scenarios ]
-
-# generating affine functions' coefficients for the left hand side of the constraint for each of the scenario
-constraint_fs = Array{Any}(undef, 1, number_of_scenarios)
-
-[ constraint_fs[i] = [ Min_value_for_matrix_elements .+ (Max_value_for_matrix_elements - Min_value_for_matrix_elements) .* rand(2, number_of_continuos_decision_variables)
-    for j = 1:number_of_constrains ] for i = 1:number_of_scenarios ]
-# first row - x_coeficients (continuous variables)
-# second row - y_coeficients (iteger variables)
-
-#---------------generating non-anticipativity conditions for the scenarios------
-
+# auxiliary function for generating non-anticipativity constraints matrices
 function nonanticipativity_matrix_generation(number_of_scenarios, number_of_variables, scenario_counter, reference_scenario)
 
     if scenario_counter == reference_scenario
@@ -105,32 +64,77 @@ function nonanticipativity_matrix_generation(number_of_scenarios, number_of_vari
     end
 
     return matrix
-
 end
 
-constraint_A1 = Array{Any}(undef, 1, number_of_scenarios)
-[ constraint_A1[i] = nonanticipativity_matrix_generation(number_of_scenarios, number_of_continuos_decision_variables, i, 1) for i = 1 : number_of_scenarios]
+function parameters_generation(number_of_scenarios, number_of_continuos_decision_variables, number_of_integer_decision_variables, number_of_constrains, Qdensity)
 
-constraint_B1 = Array{Any}(undef, 1, number_of_scenarios)
-[ constraint_B1[i] = nonanticipativity_matrix_generation(number_of_scenarios, number_of_integer_decision_variables, i, 1) for i = 1 : number_of_scenarios]
+        Random.seed!(0)
 
-constraint_b1 = zeros((number_of_scenarios - 1) * number_of_continuos_decision_variables, 1)
+        Max_value_for_matrix_elements = 1000
+        Min_value_for_matrix_elements = 0
 
-#---------------generating obejctive fucntions for the scenarios----------------
+        Max_value_for_affine_constraint = 10000
 
-# generating matrices Qsi for the objecyive for each of the scenario
-objective_Qs = Array{Any}(undef, 1, number_of_scenarios)
+        x_limits = [0 100] # max and min values for the continuous variables' boundaries
+        y_limits = [0 100] # max and min values for the integer variables' boundaries
 
-#[ objective_Qs[i] =  Matrix(Symmetric(sprand(number_of_continuos_decision_variables, number_of_continuos_decision_variables, Qdensity)))
-     #for i = 1:number_of_scenarios ]
-[ objective_Qs[i] = quadratic_matrix_generation(Qdensity, number_of_integer_decision_variables, Min_value_for_matrix_elements, Max_value_for_matrix_elements, "yes")
-     for i = 1:number_of_scenarios ]
 
-# generating linear functions' coefficients for the objective for each of the scenario
-objective_fs = Array{Any}(undef, 1, number_of_scenarios)
+        #---------------generating constraints for the variables------------------------
 
-[ objective_fs[i] = Min_value_for_matrix_elements .+ (Max_value_for_matrix_elements - Min_value_for_matrix_elements) .* [rand(2, number_of_continuos_decision_variables) ;
-    [rand(1,1) zeros(1, number_of_continuos_decision_variables-1)] ] for i = 1:number_of_scenarios  ]
-# first row - x_coeficients (continuous variables)
-# second row - y_coeficients (iteger variables)
-# third row  - constant
+        x_boundaries = [ x_limits[1]*ones( number_of_continuos_decision_variables, 1 ) rand(
+            Int( round( (x_limits[2] - x_limits[1]) / 2 ) ) : x_limits[2],
+            number_of_continuos_decision_variables, 1 ) ]
+
+        y_boundaries = [ y_limits[1]*ones( number_of_integer_decision_variables, 1 ) rand(
+            Int( round( (y_limits[2] - y_limits[1]) / 2 ) ) : y_limits[2],
+            number_of_integer_decision_variables, 1 ) ]
+
+        #---------------generating quadratic constraints for the scenarios--------------
+
+        # generating matrices Qsi for the left hand side of the contraint for each of the scenario
+        constraint_Qs = Array{Any}(undef, 1, number_of_scenarios)
+
+        [ constraint_Qs[i] = [ quadratic_matrix_generation(Qdensity, number_of_continuos_decision_variables, Min_value_for_matrix_elements, Max_value_for_matrix_elements, "no")
+            for j = 1 : number_of_constrains] for i = 1:number_of_scenarios ]
+
+        # generating affine functions' coefficients for the left hand side of the constraint for each of the scenario
+        constraint_fs = Array{Any}(undef, 1, number_of_scenarios)
+
+        [ constraint_fs[i] = [ [(Min_value_for_matrix_elements + (Max_value_for_matrix_elements - Min_value_for_matrix_elements)) .* rand(1, number_of_continuos_decision_variables);
+                                (Min_value_for_matrix_elements + (Max_value_for_matrix_elements - Min_value_for_matrix_elements)) .* [ rand(1, number_of_integer_decision_variables) zeros(1, number_of_continuos_decision_variables - number_of_integer_decision_variables)];
+                                -Max_value_for_affine_constraint .* [rand(1,1) zeros(1, number_of_continuos_decision_variables-1)] ]
+            for j = 1:number_of_constrains] for i = 1:number_of_scenarios ]
+        # first row - x_coeficients (continuous variables)
+        # second row - y_coeficients (iteger variables)
+        # third row  - constant
+
+        #---------------generating non-anticipativity conditions for the scenarios------
+
+
+
+        #constraint_A1 = Array{Any}(undef, 1, number_of_scenarios)
+            #[ constraint_A1[i] = nonanticipativity_matrix_generation(number_of_scenarios, number_of_continuos_decision_variables, i, 1) for i = 1 : number_of_scenarios]
+
+        #constraint_B1 = Array{Any}(undef, 1, number_of_scenarios)
+            #[ constraint_B1[i] = nonanticipativity_matrix_generation(number_of_scenarios, number_of_integer_decision_variables, i, 1) for i = 1 : number_of_scenarios]
+
+        #constraint_b1 = zeros((number_of_scenarios - 1) * number_of_continuos_decision_variables, 1)
+
+        #---------------generating obejctive fucntions for the scenarios----------------
+
+        # generating matrices Qsi for the objecyive for each of the scenario
+        objective_Qs = Array{Any}(undef, 1, number_of_scenarios)
+
+        [ objective_Qs[i] = quadratic_matrix_generation(Qdensity, number_of_continuos_decision_variables, Min_value_for_matrix_elements, Max_value_for_matrix_elements, "no")
+        for i = 1:number_of_scenarios ]
+
+        # generating linear functions' coefficients for the objective for each of the scenario
+        objective_fs = Array{Any}(undef, 1, number_of_scenarios)
+
+        [ objective_fs[i] = Min_value_for_matrix_elements .+ (Max_value_for_matrix_elements - Min_value_for_matrix_elements) .* [ rand(1, number_of_continuos_decision_variables); [ rand(1, number_of_integer_decision_variables) zeros(1, number_of_continuos_decision_variables - number_of_integer_decision_variables)] ]   for i = 1:number_of_scenarios  ]
+        # first row - x_coeficients (continuous variables)
+        # second row - y_coeficients (iteger variables)
+        return [constraint_Qs, constraint_fs, objective_Qs, objective_fs, x_boundaries, y_boundaries]
+end
+
+constraint_Qs, constraint_fs, objective_Qs, objective_fs, x_boundaries, y_boundaries = parameters_generation(2, 4, 3,  2,  0.6)
