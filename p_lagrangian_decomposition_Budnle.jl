@@ -2,7 +2,12 @@ using SharedArrays, Distributed
 
 include("Models_generation.jl")
 
-function p_Lagrangian_decomposition_bundle(p, number_of_scenarios, number_of_continuos_decision_variables, number_of_integer_decision_variables, number_of_constrains, Qdensity, number_of_iterations)
+
+# the function containing the implementation of the Lagrangian decomposition
+# with the bundle method multipliers update applied to the mixed integer based
+# relaxation of the original problem
+
+function Lagrangian_decomposition_bundle(p, number_of_scenarios, number_of_continuos_decision_variables, number_of_integer_decision_variables, number_of_constrains, Qdensity, number_of_iterations)
 
     # generating the parameters
     constraint_Qs, constraint_fs, objective_Qs, objective_fs, x_boundaries, y_boundaries = parameters_generation(number_of_scenarios, number_of_continuos_decision_variables, number_of_integer_decision_variables, number_of_constrains, Qdensity)
@@ -59,6 +64,7 @@ function p_Lagrangian_decomposition_bundle(p, number_of_scenarios, number_of_con
             1 : number_of_scenarios - 1]
         end
 
+    # the values for the parameters of the Bundle method
     m = 0.2
     d = 0.001
 
@@ -137,15 +143,7 @@ function p_Lagrangian_decomposition_bundle(p, number_of_scenarios, number_of_con
 
 end
 
-
 #result = p_Lagrangian_decomposition_bundle(-4, number_of_scenarios, number_of_continuos_decision_variables, number_of_integer_decision_variables, number_of_constrains, Qdensity, number_of_iterations)
-
-
-
-
-
-
-
 
 #figure("Budnle method")
 #plot(Array(1:iteration-1),dual_objective_value_at_lagrangian[1: iteration-1])

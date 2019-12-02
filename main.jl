@@ -31,7 +31,7 @@ for i = 1 : length(number_of_scenarios) # length(number_of_scenarios)
     RNMDT_final_time = time() - RNMDT_initial_time
     RNMDT_objective_value = objective_value(RNMDT_problem)
 
-    result = p_Lagrangian_decomposition_bundle(p, number_of_scenarios[i], number_of_continuos_decision_variables, number_of_integer_decision_variables, number_of_constrains, Qdensity, number_of_iterations)
+    result = Lagrangian_decomposition_bundle(p, number_of_scenarios[i], number_of_continuos_decision_variables, number_of_integer_decision_variables, number_of_constrains, Qdensity, number_of_iterations)
 
     push!(continuous_instances, (i, original_objective_value, original_final_time, RNMDT_objective_value, RNMDT_final_time, result[1][end], result[2]))
 
@@ -47,7 +47,7 @@ for i = 1 : length(number_of_scenarios) # length(number_of_scenarios)
     RNMDT_final_time = time() - RNMDT_initial_time
     RNMDT_objective_value = objective_value(RNMDT_problem)
 
-    result = p_Lagrangian_decomposition_bundle(p, number_of_scenarios[i], number_of_continuos_decision_variables, number_of_integer_decision_variables, number_of_constrains, Qdensity, number_of_iterations)
+    result = Lagrangian_decomposition_bundle(p, number_of_scenarios[i], number_of_continuos_decision_variables, number_of_integer_decision_variables, number_of_constrains, Qdensity, number_of_iterations)
 
     push!( mixed_integer_instances, (i, RNMDT_objective_value, RNMDT_final_time, result[1][end], result[2]))
 
@@ -62,8 +62,6 @@ CSV.write("continuos_instances.csv", continuous_instances)
 CSV.write("mixed_integer_instances.csv", mixed_integer_instances)
 
 
-
-
 original_problem = original_problem_generation(number_of_scenarios[18], number_of_continuos_decision_variables, number_of_integer_decision_variables, number_of_constrains, Qdensity)
 original_initial_time = time()
 optimize!(original_problem)
@@ -76,7 +74,7 @@ optimize!(RNMDT_problem)
 RNMDT_final_time = time() - RNMDT_initial_time
 RNMDT_objective_value = objective_value(RNMDT_problem)
 
-result = p_Lagrangian_decomposition_bundle(p, number_of_scenarios[18], number_of_continuos_decision_variables, number_of_integer_decision_variables, number_of_constrains, Qdensity, number_of_iterations)
+result = Lagrangian_decomposition_bundle(p, number_of_scenarios[18], number_of_continuos_decision_variables, number_of_integer_decision_variables, number_of_constrains, Qdensity, number_of_iterations)
 
 plot(Array(1:length(result[1])), result[1], xlabel = "iteration", ylabel = "upper bound", title = "Bundle method insipred lagrangian decomposition")
 plot!(Array(1:length(result[1])), result[1], seriestype=:scatter)

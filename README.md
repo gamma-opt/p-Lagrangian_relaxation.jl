@@ -121,3 +121,30 @@ _output_
 * returns the array of the Lagrangian dual subproblems resulting in applying Lagrangian decomposition to the mixed-integer based relaxation of the original problem
 
 ---
+## p_lagrangian_decomposition_Budnle.jl
+
+---
+<span style="color:blue">function</span>
+__Lagrangian_decomposition_bundle(p, number_of_scenarios, number_of_continuos_decision_variables, number_of_integer_decision_variables, number_of_constrains, Qdensity, number_of_iterations)__
+
+ The function containing the implementation of the Lagrangian decomposition with the bundle method multipliers update applied to the mixed integer based relaxation of the original problem
+
+As the stopping criteria of the algorithms the fact that the difference between the values of the objective function during the last 5 iterations is small enough comparing to predefined tolerance is utilised __eps_stop__
+
+_input_
+
+* __p__ - precision factor
+* __number_of_scenarios__ - number of the scenarios in the problem
+* __number_of_continuos_decision_variables__ - number of the continuous decision variables per scenario
+* __number_of_integer_decision_variables__ - number of the integer decision variables per scenario
+* __number_of_constrains__ - number of the constraints per scenario
+* __Qdensity__ - the density of the matrices for the quadratic constraints
+* __number_of_iterations__ - limit in the number of iterations for the Budnle method
+
+_output_
+
+* the array containing the following items
+ *  the array containing the values of the dual lagrangian function at all the interations
+ * the performance time
+ * the array containing the values of the centre of mass at all of the iterations
+---
