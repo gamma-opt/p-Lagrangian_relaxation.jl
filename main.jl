@@ -68,11 +68,25 @@ optimize!(original_problem)
 original_final_time = time() - original_initial_time
 original_objective_value = objective_value(original_problem)
 
-RNMDT_problem = RNMDT_problem_generation(p, number_of_scenarios[18], number_of_continuos_decision_variables, number_of_integer_decision_variables, number_of_constrains, Qdensity)
+p = -10
+RNMDT_problem = RNMDT_problem_generation(p, number_of_scenarios[1], number_of_continuos_decision_variables, number_of_integer_decision_variables, number_of_constrains, Qdensity)
 RNMDT_initial_time = time()
 optimize!(RNMDT_problem)
 RNMDT_final_time = time() - RNMDT_initial_time
 RNMDT_objective_value = objective_value(RNMDT_problem)
+value.(RNMDT_problem[:x])
+
+
+
+
+
+precision_p = p .* ones(1, number_of_continuos_decision_variables)
+dynamic_RNMDT_problem = dynamic_precision_RNMDT_problem_generation(precision_p, number_of_scenarios[1], number_of_continuos_decision_variables, number_of_integer_decision_variables, number_of_constrains, Qdensity)
+dynamic_RNMDT_initial_time = time()
+optimize!(dynamic_RNMDT_problem)
+dynamic_RNMDT_final_time = time() - dynamic_RNMDT_initial_time
+dynamic_RNMDT_objective_value = objective_value(dynamic_RNMDT_problem)
+value.(dynamic_RNMDT_problem[:x])
 
 result = Lagrangian_decomposition_bundle(p, number_of_scenarios[18], number_of_continuos_decision_variables, number_of_integer_decision_variables, number_of_constrains, Qdensity, number_of_iterations)
 
