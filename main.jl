@@ -62,7 +62,7 @@ CSV.write("continuos_instances.csv", continuous_instances)
 CSV.write("mixed_integer_instances.csv", mixed_integer_instances)
 
 
-original_problem = original_problem_generation(number_of_scenarios[18], number_of_continuos_decision_variables, number_of_integer_decision_variables, number_of_constrains, Qdensity)
+original_problem = original_problem_generation(number_of_scenarios[1], number_of_continuos_decision_variables, number_of_integer_decision_variables, number_of_constrains, Qdensity)
 original_initial_time = time()
 optimize!(original_problem)
 original_final_time = time() - original_initial_time
@@ -80,7 +80,9 @@ value.(RNMDT_problem[:x])
 
 
 
-precision_p = p .* ones(1, number_of_continuos_decision_variables)
+precision_p = -30 .* ones(1, number_of_continuos_decision_variables)
+precision_p[2] = -30
+precision_p[1] = -30
 dynamic_RNMDT_problem = dynamic_precision_RNMDT_problem_generation(precision_p, number_of_scenarios[1], number_of_continuos_decision_variables, number_of_integer_decision_variables, number_of_constrains, Qdensity)
 dynamic_RNMDT_initial_time = time()
 optimize!(dynamic_RNMDT_problem)
