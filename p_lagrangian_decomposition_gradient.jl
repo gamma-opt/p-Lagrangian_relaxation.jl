@@ -11,18 +11,18 @@ f_lambda_lagrangian(lambda_lagrangian, dec_index) = (dec_index == 1 ? sum(lambda
 # lagrangian relaxation variables for the x and y non anticipativity conditions written in the column, for each iteration
 vector_of_lambda_lagrangian = Array{Any}(undef, number_of_iterations, number_of_scenarios - 1)
 [ vector_of_lambda_lagrangian[1, i] = -20.5 .+ 100.0 .* rand(1,
-    number_of_continuos_decision_variables + number_of_integer_decision_variables)
+    number_of_continuous_decision_variables + number_of_integer_decision_variables)
         for i = 1 : number_of_scenarios - 1 ]
 
 # indices of coordinates of Lagrangian multipliers (written in the column) correspondent to the x variables
-x_indices = 1 : number_of_continuos_decision_variables
+x_indices = 1 : number_of_continuous_decision_variables
 
 # indices of coordinates of Lagrangian multipliers (written in the column) correspondent to the y variables
-y_indices = number_of_continuos_decision_variables + 1 : number_of_continuos_decision_variables + number_of_integer_decision_variables
+y_indices = number_of_continuous_decision_variables + 1 : number_of_continuous_decision_variables + number_of_integer_decision_variables
 
 # vector that contains decision variables written in a column (x and y in this case)
 # (each row represnets the components of the correspondent lagrangian lagrangian_multipliers_representing_variableltiplier)
-decision_variables_values_for_each_scenario = SharedArray{Float64}(number_of_continuos_decision_variables + number_of_integer_decision_variables, number_of_scenarios)
+decision_variables_values_for_each_scenario = SharedArray{Float64}(number_of_continuous_decision_variables + number_of_integer_decision_variables, number_of_scenarios)
 
 # subgradient vector at each iteration
 subgradient_vector = Array{Any}(undef, number_of_iterations, number_of_scenarios - 1)
@@ -50,10 +50,10 @@ for iteration = 1:number_of_iterations - 1
         #objective_update
         @objective( subproblems[s], Max,
                 (1 / number_of_scenarios) * ( sum( objective_Qs[s][i, i] * subproblems[s][:w_RNMDT][i, i]
-                    for i = 1 : number_of_continuos_decision_variables )
+                    for i = 1 : number_of_continuous_decision_variables )
                 + 2 * sum(objective_Qs[s][i, j] * subproblems[s][:w_RNMDT][i, j]
-                    for i = 1 : number_of_continuos_decision_variables,
-                    j = i+1 : number_of_continuos_decision_variables)
+                    for i = 1 : number_of_continuous_decision_variables,
+                    j = i+1 : number_of_continuous_decision_variables)
                 + sum( ( subproblems[s][:x] .* objective_fs[s][1, :] )
                     .+ ( subproblems[s][:y] .* objective_fs[s][2, :] ) )
                     + objective_fs[s][3, 1])
@@ -86,7 +86,7 @@ for iteration = 1:number_of_iterations - 1
         [ vector_of_lambda_lagrangian[ iteration + 1, s] =
             vector_of_lambda_lagrangian[ iteration, s] .-
                 [ sum_of_the_squared_subgradeint_coordinates[j] > 0 ? theta_decomposition * (UB_decomposition - LB_decomposition) * subgradient_vector[iteration, s][j] / sum_of_the_squared_subgradeint_coordinates[j] : 0
-                    for j = 1 : number_of_continuos_decision_variables + number_of_integer_decision_variables]'
+                    for j = 1 : number_of_continuous_decision_variables + number_of_integer_decision_variables]'
                         for s = 1 : number_of_scenarios - 1]
 
 

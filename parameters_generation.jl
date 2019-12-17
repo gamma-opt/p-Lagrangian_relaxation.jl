@@ -66,7 +66,7 @@ function nonanticipativity_matrix_generation(number_of_scenarios, number_of_vari
     return matrix
 end
 
-function parameters_generation(number_of_scenarios, number_of_continuos_decision_variables, number_of_integer_decision_variables, number_of_constrains, Qdensity)
+function parameters_generation(number_of_scenarios, number_of_continuous_decision_variables, number_of_integer_decision_variables, number_of_constrains, Qdensity)
 
         Random.seed!(0)
 
@@ -81,9 +81,9 @@ function parameters_generation(number_of_scenarios, number_of_continuos_decision
 
         #---------------generating constraints for the variables------------------------
 
-        x_boundaries = [ x_limits[1]*ones( number_of_continuos_decision_variables, 1 ) rand(
+        x_boundaries = [ x_limits[1]*ones( number_of_continuous_decision_variables, 1 ) rand(
             Int( round( (x_limits[2] - x_limits[1]) / 2 ) ) : x_limits[2],
-            number_of_continuos_decision_variables, 1 ) ]
+            number_of_continuous_decision_variables, 1 ) ]
 
         y_boundaries = [ y_limits[1]*ones( number_of_integer_decision_variables, 1 ) rand(
             Int( round( (y_limits[2] - y_limits[1]) / 2 ) ) : y_limits[2],
@@ -94,15 +94,15 @@ function parameters_generation(number_of_scenarios, number_of_continuos_decision
         # generating matrices Qsi for the left hand side of the contraint for each of the scenario
         constraint_Qs = Array{Any}(undef, 1, number_of_scenarios)
 
-        [ constraint_Qs[i] = [ quadratic_matrix_generation(Qdensity, number_of_continuos_decision_variables, Min_value_for_matrix_elements, Max_value_for_matrix_elements, "no")
+        [ constraint_Qs[i] = [ quadratic_matrix_generation(Qdensity, number_of_continuous_decision_variables, Min_value_for_matrix_elements, Max_value_for_matrix_elements, "no")
             for j = 1 : number_of_constrains] for i = 1:number_of_scenarios ]
 
         # generating affine functions' coefficients for the left hand side of the constraint for each of the scenario
         constraint_fs = Array{Any}(undef, 1, number_of_scenarios)
 
-        [ constraint_fs[i] = [ [(Min_value_for_matrix_elements + (Max_value_for_matrix_elements - Min_value_for_matrix_elements)) .* rand(1, number_of_continuos_decision_variables);
-                                (Min_value_for_matrix_elements + (Max_value_for_matrix_elements - Min_value_for_matrix_elements)) .* [ rand(1, number_of_integer_decision_variables) zeros(1, number_of_continuos_decision_variables - number_of_integer_decision_variables)];
-                                -Max_value_for_affine_constraint .* [rand(1,1) zeros(1, number_of_continuos_decision_variables-1)] ]
+        [ constraint_fs[i] = [ [(Min_value_for_matrix_elements + (Max_value_for_matrix_elements - Min_value_for_matrix_elements)) .* rand(1, number_of_continuous_decision_variables);
+                                (Min_value_for_matrix_elements + (Max_value_for_matrix_elements - Min_value_for_matrix_elements)) .* [ rand(1, number_of_integer_decision_variables) zeros(1, number_of_continuous_decision_variables - number_of_integer_decision_variables)];
+                                -Max_value_for_affine_constraint .* [rand(1,1) zeros(1, number_of_continuous_decision_variables-1)] ]
             for j = 1:number_of_constrains] for i = 1:number_of_scenarios ]
         # first row - x_coeficients (continuous variables)
         # second row - y_coeficients (iteger variables)
@@ -113,25 +113,25 @@ function parameters_generation(number_of_scenarios, number_of_continuos_decision
 
 
         #constraint_A1 = Array{Any}(undef, 1, number_of_scenarios)
-            #[ constraint_A1[i] = nonanticipativity_matrix_generation(number_of_scenarios, number_of_continuos_decision_variables, i, 1) for i = 1 : number_of_scenarios]
+            #[ constraint_A1[i] = nonanticipativity_matrix_generation(number_of_scenarios, number_of_continuous_decision_variables, i, 1) for i = 1 : number_of_scenarios]
 
         #constraint_B1 = Array{Any}(undef, 1, number_of_scenarios)
             #[ constraint_B1[i] = nonanticipativity_matrix_generation(number_of_scenarios, number_of_integer_decision_variables, i, 1) for i = 1 : number_of_scenarios]
 
-        #constraint_b1 = zeros((number_of_scenarios - 1) * number_of_continuos_decision_variables, 1)
+        #constraint_b1 = zeros((number_of_scenarios - 1) * number_of_continuous_decision_variables, 1)
 
         #---------------generating obejctive fucntions for the scenarios----------------
 
         # generating matrices Qsi for the objecyive for each of the scenario
         objective_Qs = Array{Any}(undef, 1, number_of_scenarios)
 
-        [ objective_Qs[i] = quadratic_matrix_generation(Qdensity, number_of_continuos_decision_variables, Min_value_for_matrix_elements, Max_value_for_matrix_elements, "no")
+        [ objective_Qs[i] = quadratic_matrix_generation(Qdensity, number_of_continuous_decision_variables, Min_value_for_matrix_elements, Max_value_for_matrix_elements, "no")
         for i = 1:number_of_scenarios ]
 
         # generating linear functions' coefficients for the objective for each of the scenario
         objective_fs = Array{Any}(undef, 1, number_of_scenarios)
 
-        [ objective_fs[i] = Min_value_for_matrix_elements .+ (Max_value_for_matrix_elements - Min_value_for_matrix_elements) .* [ rand(1, number_of_continuos_decision_variables); [ rand(1, number_of_integer_decision_variables) zeros(1, number_of_continuos_decision_variables - number_of_integer_decision_variables)] ]   for i = 1:number_of_scenarios  ]
+        [ objective_fs[i] = Min_value_for_matrix_elements .+ (Max_value_for_matrix_elements - Min_value_for_matrix_elements) .* [ rand(1, number_of_continuous_decision_variables); [ rand(1, number_of_integer_decision_variables) zeros(1, number_of_continuous_decision_variables - number_of_integer_decision_variables)] ]   for i = 1:number_of_scenarios  ]
         # first row - x_coeficients (continuous variables)
         # second row - y_coeficients (iteger variables)
         return [constraint_Qs, constraint_fs, objective_Qs, objective_fs, x_boundaries, y_boundaries]
