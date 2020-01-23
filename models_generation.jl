@@ -9,7 +9,7 @@ function original_problem_generation(number_of_scenarios, number_of_continuous_d
     # generating the parameters
     constraint_Qs, constraint_fs, objective_Qs, objective_fs, x_boundaries, y_boundaries = parameters_generation(number_of_scenarios, number_of_continuous_decision_variables, number_of_integer_decision_variables, number_of_constrains, Qdensity)
 
-    original_problem = Model(with_optimizer(Ipopt.Optimizer, print_level=0))
+    original_problem = Model(with_optimizer(Ipopt.Optimizer, print_level=0, tol = 1e-16))
 
     # continuous decision variables
     @variable(original_problem, x[ 1 : number_of_continuous_decision_variables, 1 : number_of_scenarios ])
@@ -19,7 +19,7 @@ function original_problem_generation(number_of_scenarios, number_of_continuous_d
 
     # objective
     @objective(original_problem, Max,
-        sum( (1/number_of_scenarios) *
+        sum( round( (1/number_of_scenarios), digits = 1) *
             (
                 sum( x[i, s] * objective_Qs[s][i, j] * x[j, s] for i = 1 : number_of_continuous_decision_variables, j = 1 : number_of_continuous_decision_variables)
                 + sum( x[i, s] * objective_fs[s][1, i] for i = 1 : number_of_continuous_decision_variables)
@@ -51,7 +51,7 @@ function original_problem_generation(number_of_scenarios, number_of_continuous_d
         y[i, s] - y[i, 1] == 0 )
 
 
-    return original_problem, objective_Qs, objective_fs
+    return original_problem, objective_Qs, objective_fs, constraint_Qs, constraint_fs
 
 end
 
@@ -84,7 +84,7 @@ function RNMDT_problem_generation(p, number_of_scenarios, number_of_continuous_d
     end
 
     @objective( RNMDT_problem, Max,
-        sum( (1/number_of_scenarios) *
+        sum( round( (1/number_of_scenarios), digits = 1) *
             (
                 sum( objective_Qs[s][i, i] * w_RNMDT[i, i, s]
                     for i = 1 : number_of_continuous_decision_variables )
@@ -170,13 +170,13 @@ function dynamic_precision_RNMDT_problem_generation(precision_p, number_of_scena
     # generating the parameters
     constraint_Qs, constraint_fs, objective_Qs, objective_fs, x_boundaries, y_boundaries = parameters_generation(number_of_scenarios, number_of_continuous_decision_variables, number_of_integer_decision_variables, number_of_constrains, Qdensity)
 
-    RNMDT_problem = Model(with_optimizer(Gurobi.Optimizer, OutputFlag=0))
+    RNMDT_problem = Model(with_optimizer(Gurobi.Optimizer, OutputFlag=0, FeasibilityTol = 1e-9, OptimalityTol = 1e-9, BarConvTol = 0, BarQCPConvTol = 0))
 
     # continuous decision variables
     @variable(RNMDT_problem, x[ 1 : number_of_continuous_decision_variables, 1 : number_of_scenarios ])
 
     # integer decision variables
-    @variable(RNMDT_problem, y[ 1 : number_of_integer_decision_variables, 1 : number_of_scenarios ], Int)
+    @variable(RNMDT_problem, y[ 1 : number_of_integer_decision_variables, 1 : number_of_scenarios ])
 
     @variables RNMDT_problem begin
         #RNMDT variables
@@ -188,7 +188,7 @@ function dynamic_precision_RNMDT_problem_generation(precision_p, number_of_scena
     end
 
     @objective( RNMDT_problem, Max,
-        sum( (1/number_of_scenarios) *
+        sum( round( (1/number_of_scenarios), digits = 1) *
             (
                 sum( objective_Qs[s][i, i] * w_RNMDT[i, i, s]
                     for i = 1 : number_of_continuous_decision_variables )
@@ -434,7 +434,7 @@ function dynamic_precision_based_LD_RNDMT_problem_generation(precision_p, number
 
         # objective with relaxed terms
         @objective( subproblem[s], Max,
-            (1/number_of_scenarios) *
+            round( (1/number_of_scenarios), digits = 1) *
 
             ( sum( objective_Qs[s][i, i] * w_RNMDT[i, i]
                 for i = 1 : number_of_continuous_decision_variables )
