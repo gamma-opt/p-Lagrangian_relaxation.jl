@@ -3,6 +3,8 @@ using LinearAlgebra, Random
 # auxiliary function for generating quadratic matrices for cosnstraints and obejctive with predefined densiity
 function quadratic_matrix_generation(density, dimention, min_range, max_range, PSD)
 
+    Random.seed!(0)
+
     # creating the matrix of predefined density,
     # taking into account that this density is defined for the case when a matrix is symmetrical
     # we generate triangular matrix in such a way that if it is represented as a symmetric one
@@ -51,29 +53,14 @@ function quadratic_matrix_generation(density, dimention, min_range, max_range, P
     return Q
 end
 
-# auxiliary function for generating non-anticipativity constraints matrices
-function nonanticipativity_matrix_generation(number_of_scenarios, number_of_variables, scenario_counter, reference_scenario)
-
-    if scenario_counter == reference_scenario
-        matrix  = ones( (number_of_scenarios - 1) * number_of_variables, 1 )
-    else
-        matrix = zeros( (number_of_scenarios - 1) * number_of_variables, 1 )
-        indices = (scenario_counter < reference_scenario) ? ( (scenario_counter-1) * number_of_variables + 1 : (scenario_counter-1) * number_of_variables + number_of_variables) : ( (scenario_counter - 2) * number_of_variables + 1: (scenario_counter - 2) * number_of_variables + number_of_variables)
-        print("scenario = $scenario_counter, indixes = $indices\n")
-        matrix[indices, 1] =  -1 .* ones(number_of_variables, 1)
-    end
-
-    return matrix
-end
-
-function parameters_generation(number_of_scenarios, number_of_continuous_decision_variables, number_of_integer_decision_variables, number_of_constrains, Qdensity)
+function parameters_generation(number_of_scenarios, number_of_integer_decision_variables, number_of_continuous_decision_variables, number_of_constrains, Qdensity)
 
         Random.seed!(0)
 
         Max_value_for_matrix_elements = 100
         Min_value_for_matrix_elements = 0
 
-        Max_value_for_affine_constraint = 1000
+        Max_value_for_affine_constraint = 10000000
 
         x_limits = [0 100] # max and min values for the continuous variables' boundaries
         y_limits = [0 100] # max and min values for the integer variables' boundaries
@@ -81,13 +68,13 @@ function parameters_generation(number_of_scenarios, number_of_continuous_decisio
 
         #---------------generating constraints for the variables------------------------
 
-        x_boundaries = [ x_limits[1]*ones( number_of_continuous_decision_variables, 1 ) rand(
+        x_boundaries = [ x_limits[1]*ones( number_of_integer_decision_variables, 1 ) rand(
             Int( round( (x_limits[2] - x_limits[1]) / 2 ) ) : x_limits[2],
-            number_of_continuous_decision_variables, 1 ) ]
-
-        y_boundaries = [ y_limits[1]*ones( number_of_integer_decision_variables, 1 ) rand(
-            Int( round( (y_limits[2] - y_limits[1]) / 2 ) ) : y_limits[2],
             number_of_integer_decision_variables, 1 ) ]
+
+        y_boundaries = [ y_limits[1]*ones( number_of_continuous_decision_variables, 1 ) rand(
+            Int( round( (y_limits[2] - y_limits[1]) / 2 ) ) : y_limits[2],
+            number_of_continuous_decision_variables, 1 ) ]
 
         #---------------generating quadratic constraints for the scenarios--------------
 
@@ -100,25 +87,13 @@ function parameters_generation(number_of_scenarios, number_of_continuous_decisio
         # generating affine functions' coefficients for the left hand side of the constraint for each of the scenario
         constraint_fs = Array{Any}(undef, 1, number_of_scenarios)
 
-        [ constraint_fs[i] = [ round.([(Min_value_for_matrix_elements + (Max_value_for_matrix_elements - Min_value_for_matrix_elements)) .* rand(1, number_of_continuous_decision_variables);
-                                (Min_value_for_matrix_elements + (Max_value_for_matrix_elements - Min_value_for_matrix_elements)) .* [ rand(1, number_of_integer_decision_variables) zeros(1, number_of_continuous_decision_variables - number_of_integer_decision_variables)];
-                                -Max_value_for_affine_constraint .* [rand(1,1) zeros(1, number_of_continuous_decision_variables-1)] ], digits = 1)
+        [ constraint_fs[i] = [ round.([(Min_value_for_matrix_elements + (Max_value_for_matrix_elements - Min_value_for_matrix_elements)) .* [rand(1, number_of_integer_decision_variables) zeros(1, ( number_of_continuous_decision_variables > number_of_integer_decision_variables ) ? (number_of_continuous_decision_variables - number_of_integer_decision_variables) : 0 ) ];
+                                (Min_value_for_matrix_elements + (Max_value_for_matrix_elements - Min_value_for_matrix_elements)) .* [ rand(1, number_of_continuous_decision_variables) zeros(1, ( number_of_integer_decision_variables > number_of_continuous_decision_variables ) ? (number_of_integer_decision_variables - number_of_continuous_decision_variables) : 0 ) ];
+                                -Max_value_for_affine_constraint .* [rand(1,1) zeros(1, ( number_of_continuous_decision_variables > number_of_integer_decision_variables ) ? (number_of_continuous_decision_variables - 1) : (number_of_integer_decision_variables - 1))] ], digits = 1)
             for j = 1:number_of_constrains] for i = 1:number_of_scenarios ]
-        # first row - x_coeficients (continuous variables)
-        # second row - y_coeficients (iteger variables)
+        # first row - x_coeficients (integer variables)
+        # second row - y_coeficients (continuous variables)
         # third row  - constant
-
-        #---------------generating non-anticipativity conditions for the scenarios------
-
-
-
-        #constraint_A1 = Array{Any}(undef, 1, number_of_scenarios)
-            #[ constraint_A1[i] = nonanticipativity_matrix_generation(number_of_scenarios, number_of_continuous_decision_variables, i, 1) for i = 1 : number_of_scenarios]
-
-        #constraint_B1 = Array{Any}(undef, 1, number_of_scenarios)
-            #[ constraint_B1[i] = nonanticipativity_matrix_generation(number_of_scenarios, number_of_integer_decision_variables, i, 1) for i = 1 : number_of_scenarios]
-
-        #constraint_b1 = zeros((number_of_scenarios - 1) * number_of_continuous_decision_variables, 1)
 
         #---------------generating obejctive fucntions for the scenarios----------------
 
@@ -131,10 +106,12 @@ function parameters_generation(number_of_scenarios, number_of_continuous_decisio
         # generating linear functions' coefficients for the objective for each of the scenario
         objective_fs = Array{Any}(undef, 1, number_of_scenarios)
 
-        [ objective_fs[i] = round.( Min_value_for_matrix_elements .+ (Max_value_for_matrix_elements - Min_value_for_matrix_elements) .* [ rand(1, number_of_continuous_decision_variables); [ rand(1, number_of_integer_decision_variables) zeros(1, number_of_continuous_decision_variables - number_of_integer_decision_variables)] ], digits = 1) for i = 1:number_of_scenarios  ]
+        [ objective_fs[i] = round.( Min_value_for_matrix_elements .+ (Max_value_for_matrix_elements - Min_value_for_matrix_elements) .*  rand(1, number_of_continuous_decision_variables),  digits = 1) for i = 1:number_of_scenarios  ]
         # first row - x_coeficients (continuous variables)
         # second row - y_coeficients (iteger variables)
-        return [constraint_Qs, constraint_fs, objective_Qs, objective_fs, x_boundaries, y_boundaries]
+
+        objective_c = round.( Min_value_for_matrix_elements .+ (Max_value_for_matrix_elements - Min_value_for_matrix_elements) .*  rand(1, number_of_integer_decision_variables),  digits = 1)
+        return [constraint_Qs, constraint_fs, objective_Qs, objective_fs, objective_c, x_boundaries, y_boundaries]
 end
 
 constraint_Qs, constraint_fs, objective_Qs, objective_fs, x_boundaries, y_boundaries = parameters_generation(2, 4, 3,  2,  0.6)
