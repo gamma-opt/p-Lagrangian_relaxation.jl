@@ -1,53 +1,57 @@
-using LinearAlgebra, Random
 
 # auxiliary function for generating quadratic matrices for cosnstraints and obejctive with predefined densiity
 function quadratic_matrix_generation(density, dimention, min_range, max_range, PSD)
 
     Random.seed!(0)
 
-    # creating the matrix of predefined density,
-    # taking into account that this density is defined for the case when a matrix is symmetrical
-    # we generate triangular matrix in such a way that if it is represented as a symmetric one
-    # (dividing upper triangular part by 2 and reflecting it towards the diagonal)
-    # it will have that predefined density
+    # if the matrix is supposed to be PSD
+    if PSD == "yes"
 
-    # separately generating diagonal elements not equal to zero (to be able to create PSD after)
-    diagonal_elements  = max_range .* round.(rand(1, dimention), RoundUp, digits = 1)
+        # creating the matrix of predefined density,
+        # taking into account that this density is defined for the case when a matrix is symmetrical
+        # we generate triangular matrix in such a way that if it is represented as a symmetric one
+        # (dividing upper triangular part by 2 and reflecting it towards the diagonal)
+        # it will have that predefined density
 
-    # calculating the number of non-zero elements in the upper diagonal part
-    # depending on the predefined density
-    # and taking into account that diagonal elements are non-zero
-    number_of_other_non_zero_elements = Int(round((density * dimention^2 - dimention) / 2))
+        # separately generating diagonal elements not equal to zero (to be able to create PSD after)
+        diagonal_elements  = max_range .* round.(rand(1, dimention), RoundUp, digits = 1)
 
-    # creating one-dimensional array containing an abovementioned number of non zero elements,
-    # filling the rest with zeros and shuffling the array
-    upper_triangular_elements  = shuffle!([(min_range .+ (max_range - min_range) .* round.(rand(1, number_of_other_non_zero_elements), digits = 1 )) zeros(1, Int(dimention*(dimention-1)/2) - number_of_other_non_zero_elements) ] )
+        # calculating the number of non-zero elements in the upper diagonal part
+        # depending on the predefined density
+        # and taking into account that diagonal elements are non-zero
+        number_of_other_non_zero_elements = max(0,  Int(round((density * dimention^2 - dimention) / 2)))
 
-    # creating final matrix with zero elements
-    Q = zeros(dimention, dimention)
+        # creating one-dimensional array containing an abovementioned number of non zero elements,
+        # filling the rest with zeros and shuffling the array
+        upper_triangular_elements  = shuffle!([(min_range .+ (max_range - min_range) .* round.(rand(1, number_of_other_non_zero_elements), digits = 1 )) zeros(1, Int(dimention*(dimention-1)/2) - number_of_other_non_zero_elements) ] )
 
-    # using above mentioned diagonal elements and upper triangular part
-    # rewriting zeros in the upper triangular part accordingly
-    for i = 1:dimention
-        for j = i:dimention
-            if i == j # if the element is on the diagonal using an array of diagonal elements
-                Q[i,i] = diagonal_elements[i]
-            else
-                Q[i,j] = upper_triangular_elements[1]/2 # otherwise using one elemnts from upper triangular elements
-                Q[j,i] = upper_triangular_elements[1]/2 # otherwise using one elemnts from upper triangular elements
-                upper_triangular_elements = upper_triangular_elements[2:end] # deleting that element from the set
+        # creating final matrix with zero elements
+        Q = zeros(dimention, dimention)
+
+        # using above mentioned diagonal elements and upper triangular part
+        # rewriting zeros in the upper triangular part accordingly
+        for i = 1:dimention
+            for j = i:dimention
+                if i == j # if the element is on the diagonal using an array of diagonal elements
+                    Q[i,i] = diagonal_elements[i]
+                else
+                    Q[i,j] = upper_triangular_elements[1]/2 # otherwise using one elemnts from upper triangular elements
+                    Q[j,i] = upper_triangular_elements[1]/2 # otherwise using one elemnts from upper triangular elements
+                    upper_triangular_elements = upper_triangular_elements[2:end] # deleting that element from the set
+                end
             end
         end
-    end
 
-    # if the matrix is supposed to be a PSD then check if the diagonal elements are bigger
-    # than the sum of the elements on the same row and if it's not the case increase it by
-    # a bigger enough number
-    if PSD == "yes"
+        # if the matrix is supposed to be a PSD then check if the diagonal elements are bigger
+        # than the sum of the elements on the same row and if it's not the case increase it by
+        # a bigger enough number
         for i = 1:dimention
             #Q[i,i] = Q[i,i] > sum(Q[i,i+1:end]) ? Q[i,i] : sum(Q[i,i+1:end]) + 1
             Q[i,i] = Q[i,i] > (sum(abs.(Q[i, 1:i-1])) + sum(abs.(Q[i, i+1:end]))) ? Q[i,i] : (sum(abs.(Q[i, 1:i-1])) + sum(abs.(Q[i, i+1:end]))) +1000
         end
+    # if the matrix does not have to be necessarily PSD
+    else
+        Q = (min_range  + (max_range - min_range) ) .* Matrix(Symmetric(sprand(dimention,dimention,density)))
     end
 
     return Q
@@ -114,4 +118,4 @@ function parameters_generation(number_of_scenarios, number_of_integer_decision_v
         return [constraint_Qs, constraint_fs, objective_Qs, objective_fs, objective_c, x_boundaries, y_boundaries]
 end
 
-constraint_Qs, constraint_fs, objective_Qs, objective_fs, x_boundaries, y_boundaries = parameters_generation(2, 4, 3,  2,  0.6)
+constraint_Qs, constraint_fs, objective_Qs, objective_fs, x_boundaries, y_boundaries = parameters_generation(2, 4, 3,  2,  0.8)

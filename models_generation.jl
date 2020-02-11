@@ -4,16 +4,21 @@ include("parameters_generation.jl")
 
 #--------------generating original JuMP problem---------------------------------
 
-function original_problem_generation(number_of_scenarios, number_of_integer_decision_variables, number_of_continuous_decision_variables, number_of_constrains, Qdensity)
+function original_problem_generation(number_of_scenarios, number_of_integer_decision_variables, number_of_continuous_decision_variables, number_of_constrains, Qdensity, is_fixed_int)
 
     # generating the parameters
     constraint_Qs, constraint_fs, objective_Qs, objective_fs, objective_c, x_boundaries, y_boundaries = parameters_generation(number_of_scenarios, number_of_integer_decision_variables, number_of_continuous_decision_variables, number_of_constrains, Qdensity)
 
     #original_problem = Model(with_optimizer(Ipopt.Optimizer, print_level=0))
-    original_problem = Model(with_optimizer(Gurobi.Optimizer, NonConvex = 2))
+    #original_problem = Model(with_optimizer(Gurobi.Optimizer, NonConvex = 2, MIPFocus=3))
+    original_problem = Model( (is_fixed_int == "yes") ? ( with_optimizer(Ipopt.Optimizer, print_level=0) ) : ( with_optimizer(Gurobi.Optimizer, NonConvex = 2, MIPFocus=3) ) )
 
     # integer decision variables
-    @variable(original_problem, x[ 1 : number_of_integer_decision_variables, 1 : number_of_scenarios ], Int)
+    if (is_fixed_int == "yes")
+        @variable(original_problem, x[ 1 : number_of_integer_decision_variables, 1 : number_of_scenarios ] )
+    else
+        @variable(original_problem, x[ 1 : number_of_integer_decision_variables, 1 : number_of_scenarios ], Int )
+    end
 
     # continuous decision variables
     @variable(original_problem, y[ 1 : number_of_continuous_decision_variables, 1 : number_of_scenarios ])
@@ -64,7 +69,7 @@ function dynamic_precision_RNMDT_problem_generation(precision_p, number_of_scena
     # generating the parameters
     constraint_Qs, constraint_fs, objective_Qs, objective_fs, objective_c, x_boundaries, y_boundaries = parameters_generation(number_of_scenarios, number_of_integer_decision_variables, number_of_continuous_decision_variables, number_of_constrains, Qdensity)
 
-    RNMDT_problem = Model(with_optimizer(Gurobi.Optimizer, OutputFlag=0, BarConvTol = 0.0, FeasibilityTol = 1e-9, IntFeasTol = 1e-9, MIPGap = 0, MIPGapAbs = 0, OptimalityTol = 1e-9, PSDTol = 0, BarQCPConvTol = 0, MarkowitzTol = 1e-4))
+    RNMDT_problem = Model(with_optimizer(Gurobi.Optimizer, OutputFlag=0 ))
 
     # continuous decision variables
     @variable(RNMDT_problem, x[ 1 : number_of_integer_decision_variables, 1 : number_of_scenarios ], Int)
@@ -177,7 +182,7 @@ function dynamic_precision_based_LD_RNDMT_problem_generation(precision_p, number
         subproblem[s] = Model(with_optimizer(Gurobi.Optimizer,  OutputFlag = 0))
 
         # continuous decision variables
-        @variable( subproblem[s], x[1 : number_of_integer_decision_variables] )
+        @variable( subproblem[s], x[1 : number_of_integer_decision_variables], Int )
 
         # integer decision variables
         @variable( subproblem[s], y[1 : number_of_continuous_decision_variables] )

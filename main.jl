@@ -1,17 +1,28 @@
 
-using DataFrames, CSV, Plots, Gurobi, Random, XLSX
+using DataFrames, CSV, Plots, Gurobi, Random, XLSX, Ipopt, Suppressor, LinearAlgebra, SparseArrays
 
 include("dynamic_precision_based_algorithms.jl")
-
 number_of_scenarios = vcat( Array(2:10), Array(20:10:100) ) # number of scenarios for each of the instances
 number_of_continuous_decision_variables = 10 # number of continuous variables per each secanrio
 number_of_integer_decision_variables = 4 # number of integer variables per each scenario
 number_of_constrains = 20 # number of the constraints per each scenario|
-Qdensity = 1.0
+Qdensity = 0.8
 
-instance = 2
+instance = 16
+
+macro warmup(number_of_workers)
+        @sync @distributed for i = 1 : number_of_workers
+            warmup_model = Model(with_optimizer(Gurobi.Optimizer))
+            @variable(warmup_model, x )
+            @constraint(warmup_model, 0 <= x <= 10)
+            @objective(warmup_model, Max, x^2)
+            optimize!(warmup_model)
+        end
+
+end
 #---------------------------original problem------------------------------------
-original_problem, objective_Qs, objective_fs, constraint_Qs, constraint_fs, objective_c = original_problem_generation(number_of_scenarios[instance], number_of_integer_decision_variables, number_of_continuous_decision_variables, number_of_constrains, Qdensity)
+original_problem, objective_Qs, objective_fs, constraint_Qs, constraint_fs, objective_c = original_problem_generation(number_of_scenarios[instance], number_of_integer_decision_variables, number_of_continuous_decision_variables, number_of_constrains, Qdensity, "no")
+
 JuMP.optimize!(original_problem)
 objective_value(original_problem)
 value.(original_problem[:y])
@@ -23,7 +34,7 @@ has_duals(original_problem)
 #-----------------------precision-based RNMDT-----------------------------------
 
 # single model generation and optimisation with fixed p
-p = -1
+p = -5
 precision_p = p .* ones(1, number_of_continuous_decision_variables)
 dynamic_RNMDT_problem = dynamic_precision_RNMDT_problem_generation(precision_p, number_of_scenarios[instance], number_of_integer_decision_variables, number_of_continuous_decision_variables, number_of_constrains, Qdensity)
 JuMP.optimize!(dynamic_RNMDT_problem)
@@ -35,7 +46,7 @@ value.(dynamic_RNMDT_problem[:y])
 # dynamic precision algorithm test
 N1 = 8
 N2 = 3
-tolerance = 0.0001
+tolerance = 0.00001
 time_limit = 7200
 max_number_of_iterations = 100
 
@@ -49,26 +60,74 @@ objective_value(orginial_RNDMT_problem)
 value.(orginial_RNDMT_problem[:x])
 
 #-----------------------dynamic precision-based LD + RNDMT----------------------
-subproblem = dynamic_precision_based_LD_RNDMT_problem_generation(precision_p, number_of_scenarios[1], number_of_integer_decision_variables, number_of_continuous_decision_variables, number_of_constrains, Qdensity)
-optimize!(subproblem[1])
+subproblem = dynamic_precision_based_LD_RNDMT_problem_generation(precision_p, number_of_scenarios[instance], number_of_integer_decision_variables, number_of_continuous_decision_variables, number_of_constrains, Qdensity)
+optimize!(subproblem[3])
 objective_value(subproblem[1])
-objective_value(subproblem[2])
+objective_value(subproblem[3])
 
 # single iteration of LD + RNDMT
+rmprocs(workers()) #removing all existing workers
+addprocs(6) #add the number of workers equal to the number of scenarios (otherwise there might be done redundant work by means of copying the array of models to every process and updating objective everywhere)
+@everywhere using JuMP, Gurobi, Random, SparseArrays, LinearAlgebra
+@warmup(6)
+@everywhere include("models_generation.jl")
+
+p = -2
+precision_p = p .* ones(1, number_of_continuous_decision_variables)
+max_number_of_iterations = 100
+
+# generating the inital values for the center of gravity
+center_of_gravity_min = 0
+center_of_gravity_max = 10
+Random.seed!(0)
+center_of_gravity_inital_value = Array{Any}(undef, number_of_scenarios[instance] - 1)
+[ center_of_gravity_inital_value[i] = center_of_gravity_min .+ (center_of_gravity_max - center_of_gravity_min)  .* rand(1,
+    number_of_integer_decision_variables)
+        for i = 1 : number_of_scenarios[instance] - 1 ]
+
+init = time()
+UB, xr, yr, wr, lambda, number_of_the_serious_steps, center = dynamic_precision_based_Lagrangian_decomposition_bundle(precision_p, number_of_scenarios[instance], number_of_integer_decision_variables, number_of_continuous_decision_variables, number_of_constrains, Qdensity, max_number_of_iterations, center_of_gravity_inital_value)
+final = time() - init
+
+
+rmprocs(workers()) #removing all existing workers
+addprocs(3) #add the number of workers equal to the number of scenarios (otherwise there might be done redundant work by means of copying the array of models to every process and updating objective everywhere)
+@everywhere using JuMP, Gurobi
+@warmup(3)
+@everywhere include("models_generation.jl")
+
 p = -1
 precision_p = p .* ones(1, number_of_continuous_decision_variables)
 max_number_of_iterations = 100
-UB, xr, yr, wr, lambda = dynamic_precision_based_Lagrangian_decomposition_bundle(precision_p, number_of_scenarios[instance], number_of_integer_decision_variables, number_of_continuous_decision_variables, number_of_constrains, Qdensity, max_number_of_iterations)
+
+# generating the inital values for the center of gravity
+center_of_gravity_min = 0
+center_of_gravity_max = 100
+Random.seed!(0)
+center_of_gravity_inital_value = Array{Any}(undef, number_of_scenarios[instance] - 1)
+[ center_of_gravity_inital_value[i] = center_of_gravity_min .+ (center_of_gravity_max - center_of_gravity_min)  .* rand(1,
+    number_of_integer_decision_variables)
+        for i = 1 : number_of_scenarios[instance] - 1 ]
+
+init1 = time()
+UB1, xr1, yr1, wr1, lambda1, number_of_the_serious_steps1, center1= dynamic_precision_based_Lagrangian_decomposition_bundle(precision_p, number_of_scenarios[instance], number_of_integer_decision_variables, number_of_continuous_decision_variables, number_of_constrains, Qdensity, max_number_of_iterations, center_of_gravity_inital_value)
+final1 = time() - init1
 
 # dynamic precision algorithm test
 N1 = 8
-N2 = 3
-tolerance = 0.00001
+N2 = 1
+tolerance = 0.0001
 time_limit = 7200
 max_number_of_iterations = 100
 
-dynamic_LD_RNMDT_results = dynamic_precision_LD_RNMDT_algorithm(N1, N2, tolerance, time_limit, max_number_of_iterations, number_of_scenarios[instance], number_of_integer_decision_variables, number_of_continuous_decision_variables, number_of_constrains, Qdensity )
+rmprocs(workers()) #removing all existing workers
+addprocs(number_of_scenarios[instance]) #add the number of workers equal to the number of scenarios (otherwise there might be done redundant work by means of copying the array of models to every process and updating objective everywhere)
+@everywhere using JuMP, Gurobi
+@everywhere include("dynamic_precision_based_algorithms.jl")
 
+stime = time()
+dynamic_LD_RNMDT_results = dynamic_precision_LD_RNMDT_algorithm(N1, N2, tolerance, time_limit, max_number_of_iterations, number_of_scenarios[instance], number_of_integer_decision_variables, number_of_continuous_decision_variables, number_of_constrains, Qdensity )
+etime = time() - stime
 #attempt for the subgradient
 #dual_objective_value_at_lagrangian, decision_variables_values_for_each_scenario, decision_variables_values_for_each_scenario, RNMDT_quadraticity_variables_w_for_each_scenario, vector_of_lambda_lagrangian = dynamic_precision_based_Lagrangian_decomposition_subgradient(precision_p, number_of_scenarios[2], number_of_continuous_decision_variables, number_of_integer_decision_variables, number_of_constrains, Qdensity, max_number_of_iterations)
 #plt = plot(collect(1:max_number_of_iterations), dual_objective_value_at_lagrangian')
@@ -120,16 +179,16 @@ XLSX.writetable("single_iteration.xlsx", collect(DataFrames.eachcol(df_single_it
 
 #-------------------------------------------------------------------------------
 
-N1 = 8
-N2 = 3
-tolerance = 0.00001
+N1 = 5
+N2 = 10
+tolerance = 0.0001
 time_limit = 7200
 max_number_of_iterations = 100
 
 df_LD_RNMDT = DataFrame(instance  = Int64[], iteration = Int64[], UB = Float64[], LB = Float64[], Gap  = Float64[], time = Float64[])
 df_RNMDT = DataFrame(instance  = Int64[], iteration = Int64[], UB = Float64[], LB = Float64[], Gap  = Float64[], time = Float64[])
 
-for instance = 1:18
+for instance = 14:18
 
     dynamic_RNMDT_results = dynamic_precision_RNMDT_algorithm(N1, N2, tolerance, time_limit, max_number_of_iterations, number_of_scenarios[instance], number_of_integer_decision_variables, number_of_continuous_decision_variables, number_of_constrains, Qdensity)
 

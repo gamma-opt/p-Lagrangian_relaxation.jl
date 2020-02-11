@@ -13,7 +13,7 @@ function dynamic_precision_RNMDT_algorithm(N1, N2, tolerance, time_limit, max_nu
 
     results = zeros(3, max_number_of_iterations)
 
-    original_problem, objective_Qs = original_problem_generation(number_of_scenarios, number_of_integer_decision_variables, number_of_continuous_decision_variables, number_of_constrains, Qdensity)
+    original_problem, objective_Qs = original_problem_generation(number_of_scenarios, number_of_integer_decision_variables, number_of_continuous_decision_variables, number_of_constrains, Qdensity, "yes")
     init_time  = time()
 
     while ( iteration == 0 ? true : ( (UB - LB)/LB > tolerance ) ) & ( time() - init_time < time_limit ) & (iteration < max_number_of_iterations)
@@ -34,7 +34,7 @@ function dynamic_precision_RNMDT_algorithm(N1, N2, tolerance, time_limit, max_nu
         set_start_value.(original_problem[:y], yr)
 
         #fixing the values for the integer variables
-        fix.(original_problem[:x], xr)
+        fix.(original_problem[:x], xr, force = true)
         #set_start_value.(original_problem[:x], xr)
 
         # optimizing the original problems using the values for the decision
@@ -93,29 +93,38 @@ function dynamic_precision_LD_RNMDT_algorithm(N1, N2, tolerance, time_limit, max
 
     f_rank = zeros(1, number_of_continuous_decision_variables)
 
+    # generating the inital values for the center of gravity
+    center_of_gravity_min = 0
+    center_of_gravity_max = 10
+
+    center_of_gravity_inital_value = Array{Any}(undef, number_of_scenarios - 1)
+    [ center_of_gravity_inital_value[i] = center_of_gravity_min .+ (center_of_gravity_max - center_of_gravity_min)  .* rand(1,
+        number_of_integer_decision_variables)
+            for i = 1 : number_of_scenarios - 1 ]
+
     results = zeros(3, max_number_of_iterations)
 
-    original_problem, objective_Qs, objective_fs, objective_c = original_problem_generation(number_of_scenarios, number_of_integer_decision_variables, number_of_continuous_decision_variables, number_of_constrains, Qdensity)
+    original_problem, objective_Qs, objective_fs, objective_c = original_problem_generation(number_of_scenarios, number_of_integer_decision_variables, number_of_continuous_decision_variables, number_of_constrains, Qdensity, "yes")
     init_time  = time()
     while ( iteration == 0 ? true : ( (UB - LB)/LB > tolerance ) ) & ( time() - init_time < time_limit ) & (iteration < max_number_of_iterations)
 
         iteration  = iteration + 1
 
-        UB, x_values_LD_RNMDT, y_values_LD_RNMDT, w_RNMDT_values_LD_RNMDT = dynamic_precision_based_Lagrangian_decomposition_bundle(precision_p_iteration, number_of_scenarios, number_of_integer_decision_variables, number_of_continuous_decision_variables, number_of_constrains, Qdensity, Max_number_of_iterations_for_LD_bundle)
+        UB, x_values_LD_RNMDT, y_values_LD_RNMDT, w_RNMDT_values_LD_RNMDT, lambda, number_of_the_serious_steps, center_of_gravity_inital_value = dynamic_precision_based_Lagrangian_decomposition_bundle(precision_p_iteration, number_of_scenarios, number_of_integer_decision_variables, number_of_continuous_decision_variables, number_of_constrains, Qdensity, Max_number_of_iterations_for_LD_bundle, center_of_gravity_inital_value)
 
         yr = y_values_LD_RNMDT
 
         w_RNMDT_r =  w_RNMDT_values_LD_RNMDT
 
-        xr = repeat( sum(x_values_LD_RNMDT, dims = 2)./number_of_scenarios, 1, number_of_scenarios )
-        #xr = repeat( Int.(round.( sum(x_values_LD_RNMDT, dims = 2)./number_of_scenarios, digits = 0)), 1, number_of_scenarios)
+        #xr = repeat( sum(x_values_LD_RNMDT, dims = 2)./number_of_scenarios, 1, number_of_scenarios )
+        xr = repeat( Int.(round.( sum(x_values_LD_RNMDT, dims = 2)./number_of_scenarios, digits = 0)), 1, number_of_scenarios)
 
         # setting strating values for the continuous variables
         set_start_value.(original_problem[:y], yr)
 
         #fixing the values for the integer variables
-        #fix.(original_problem[:x], xr)
-        set_start_value.(original_problem[:x], xr)
+        fix.(original_problem[:x], xr, force = true)
+        #set_start_value.(original_problem[:x], xr)
 
         optimize!(original_problem)
         LB  = objective_value(original_problem)
