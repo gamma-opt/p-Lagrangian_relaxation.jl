@@ -4,10 +4,10 @@ include("parameters_generation.jl")
 
 #--------------generating original JuMP problem---------------------------------
 
-function original_problem_generation(number_of_scenarios, number_of_integer_decision_variables, number_of_continuous_decision_variables, number_of_constrains, Qdensity, is_fixed_int)
+function original_problem_generation(number_of_scenarios, number_of_integer_decision_variables, number_of_continuous_decision_variables, number_of_constraints, Qdensity, is_fixed_int)
 
     # generating the parameters
-    constraint_Qs, constraint_fs, objective_Qs, objective_fs, objective_c, x_boundaries, y_boundaries = parameters_generation(number_of_scenarios, number_of_integer_decision_variables, number_of_continuous_decision_variables, number_of_constrains, Qdensity)
+    constraint_Qs, constraint_fs, objective_Qs, objective_fs, objective_c, x_boundaries, y_boundaries = parameters_generation(number_of_scenarios, number_of_integer_decision_variables, number_of_continuous_decision_variables, number_of_constraints, Qdensity)
 
     #original_problem = Model(with_optimizer(Ipopt.Optimizer, print_level=0))
     #original_problem = Model(with_optimizer(Gurobi.Optimizer, NonConvex = 2, MIPFocus=3))
@@ -25,7 +25,7 @@ function original_problem_generation(number_of_scenarios, number_of_integer_deci
 
     # objective
     @objective(original_problem, Max,
-        sum( round( (1/number_of_scenarios), digits = 2) *
+        sum( round( (1/number_of_scenarios), digits = 3) *
             (
                 sum( y[i, s] * objective_Qs[s][i, j] * y[j, s] for i = 1 : number_of_continuous_decision_variables, j = 1 : number_of_continuous_decision_variables)
                 + sum( x[i, s] * objective_c[i] for i = 1 : number_of_integer_decision_variables)
@@ -35,7 +35,7 @@ function original_problem_generation(number_of_scenarios, number_of_integer_deci
         )
 
     # constraints 4-2
-    @constraint(original_problem, [s = 1 : number_of_scenarios, i = 1 : number_of_constrains ],
+    @constraint(original_problem, [s = 1 : number_of_scenarios, i = 1 : number_of_constraints ],
         sum( y[j, s] * constraint_Qs[s][i][j,k] * y[k, s] for j = 1 : number_of_continuous_decision_variables, k = 1: number_of_continuous_decision_variables)
         + sum( x[j, s] * constraint_fs[s][i][1, j] for j = 1 : number_of_integer_decision_variables)
         + sum( y[j, s] * constraint_fs[s][i][2, j] for j = 1:  number_of_continuous_decision_variables)
@@ -60,16 +60,16 @@ end
 
 #--------------generating mixed-integer based relaxations-----------------------
 
-function dynamic_precision_RNMDT_problem_generation(precision_p, number_of_scenarios, number_of_integer_decision_variables, number_of_continuous_decision_variables, number_of_constrains, Qdensity)
+function dynamic_precision_RNMDT_problem_generation(precision_p, number_of_scenarios, number_of_integer_decision_variables, number_of_continuous_decision_variables, number_of_constraints, Qdensity)
 
     # all the commments in this section refer to the paper
     # Enhancing the normalized multiparametric disaggregation
     # technique for mixed-integer quadratic programming
 
     # generating the parameters
-    constraint_Qs, constraint_fs, objective_Qs, objective_fs, objective_c, x_boundaries, y_boundaries = parameters_generation(number_of_scenarios, number_of_integer_decision_variables, number_of_continuous_decision_variables, number_of_constrains, Qdensity)
+    constraint_Qs, constraint_fs, objective_Qs, objective_fs, objective_c, x_boundaries, y_boundaries = parameters_generation(number_of_scenarios, number_of_integer_decision_variables, number_of_continuous_decision_variables, number_of_constraints, Qdensity)
 
-    RNMDT_problem = Model(with_optimizer(Gurobi.Optimizer, OutputFlag=0 ))
+    RNMDT_problem = Model(with_optimizer(Gurobi.Optimizer, OutputFlag=0))#, MIPGap =  0, IntFeasTol = 1e-9, FeasibilityTol = 1e-9 ))
 
     # continuous decision variables
     @variable(RNMDT_problem, x[ 1 : number_of_integer_decision_variables, 1 : number_of_scenarios ], Int)
@@ -87,7 +87,7 @@ function dynamic_precision_RNMDT_problem_generation(precision_p, number_of_scena
     end
 
     @objective( RNMDT_problem, Max,
-        sum( round( (1/number_of_scenarios), digits = 2) *
+        sum( round( (1/number_of_scenarios), digits = 3) *
             (
             sum(objective_Qs[s][i, j] * w_RNMDT[i, j, s]
                     for i = 1 : number_of_continuous_decision_variables,
@@ -98,10 +98,10 @@ function dynamic_precision_RNMDT_problem_generation(precision_p, number_of_scena
         for s = 1 : number_of_scenarios)
     ) # 26
 
-    @constraint( RNMDT_problem, [ s = 1 : number_of_scenarios, r = 1 : number_of_constrains ],
+    @constraint( RNMDT_problem, [ s = 1 : number_of_scenarios, r = 1 : number_of_constraints ],
         sum(constraint_Qs[s][r][i, j] * w_RNMDT[i, j, s]
             for i = 1 : number_of_continuous_decision_variables,
-            j = 1 : number_of_continuous_decision_variables)
+                j = 1 : number_of_continuous_decision_variables)
         + sum( x[i, s] * constraint_fs[s][r][1, i] for i = 1:number_of_integer_decision_variables)
         + sum( y[j, s] * constraint_fs[s][r][2, j] for j = 1:number_of_continuous_decision_variables )
         + constraint_fs[s][r][3, 1] <= 0
@@ -109,20 +109,20 @@ function dynamic_precision_RNMDT_problem_generation(precision_p, number_of_scena
 
     @constraint( RNMDT_problem, [ j  = 1 : number_of_continuous_decision_variables, s  = 1 : number_of_scenarios],
         y[j, s] == (y_boundaries[j, 2] - y_boundaries[j, 1])  *
-        ( sum( 2.0^l * z_RNMDT[j, l, s] for l = precision_p[j] : -1) + delta_y_RNMDT[j, s] ) ) # 28
+        ( sum( 2.0^l * z_RNMDT[j, l, s] for l = precision_p[j, s] : -1) + delta_y_RNMDT[j, s] ) ) # 28
 
     @constraint( RNMDT_problem, [ i  = 1 : number_of_continuous_decision_variables, j = 1 : number_of_continuous_decision_variables, s = 1 : number_of_scenarios ],
         w_RNMDT[i, j, s] == (y_boundaries[j, 2] - y_boundaries[j, 1]) *
-        ( sum( 2.0^l * y_heat_RNMDT[i, j, l, s] for l = precision_p[j] : -1) + delta_w_RNMDT[i, j, s] ) ) # 29
+        ( sum( 2.0^l * y_heat_RNMDT[i, j, l, s] for l = precision_p[j, s] : -1) + delta_w_RNMDT[i, j, s] ) ) # 29
 
     @constraint( RNMDT_problem, [ j  = 1 : number_of_continuous_decision_variables, s = 1 : number_of_scenarios ],
-        0 <= delta_y_RNMDT[j, s] <= 2.0^precision_p[j] ) # 30
+        0 <= delta_y_RNMDT[j, s] <= 2.0^precision_p[j, s] ) # 30
 
     @constraint( RNMDT_problem, [ i = 1 : number_of_continuous_decision_variables, j = 1 : number_of_continuous_decision_variables, s = 1 : number_of_scenarios],
-        2.0^precision_p[i] * ( y[i, s] - y_boundaries[i, 2] ) + y_boundaries[i, 2] * delta_y_RNMDT[j, s] <= delta_w_RNMDT[i, j, s]) # 31
+        2.0^precision_p[i, s] * ( y[i, s] - y_boundaries[i, 2] ) + y_boundaries[i, 2] * delta_y_RNMDT[j, s] <= delta_w_RNMDT[i, j, s]) # 31
 
     @constraint( RNMDT_problem, [ i = 1 : number_of_continuous_decision_variables, j = 1 : number_of_continuous_decision_variables, s = 1 : number_of_scenarios],
-        delta_w_RNMDT[i, j, s] <= 2.0^precision_p[i] * ( y[i, s] - y_boundaries[i, 1] ) + y_boundaries[i, 1] * delta_y_RNMDT[j, s]) # 31
+        delta_w_RNMDT[i, j, s] <= 2.0^precision_p[i, s] * ( y[i, s] - y_boundaries[i, 1] ) + y_boundaries[i, 1] * delta_y_RNMDT[j, s]) # 31
 
     @constraint( RNMDT_problem, [ i = 1 : number_of_continuous_decision_variables, j = 1 : number_of_continuous_decision_variables, s = 1 : number_of_scenarios ],
         y_boundaries[i, 1] * delta_y_RNMDT[j, s] <= delta_w_RNMDT[i, j, s]) #32
@@ -130,16 +130,16 @@ function dynamic_precision_RNMDT_problem_generation(precision_p, number_of_scena
     @constraint( RNMDT_problem, [ i = 1 : number_of_continuous_decision_variables, j = 1 : number_of_continuous_decision_variables, s = 1 : number_of_scenarios],
         delta_w_RNMDT[i, j, s] <= y_boundaries[i, 2] * delta_y_RNMDT[j, s]) # 32
 
-    @constraint( RNMDT_problem, [ i = 1 : number_of_continuous_decision_variables, j = 1 : number_of_continuous_decision_variables, l = precision_p[j] : -1, s = 1 : number_of_scenarios],
+    @constraint( RNMDT_problem, [ i = 1 : number_of_continuous_decision_variables, j = 1 : number_of_continuous_decision_variables, s = 1 : number_of_scenarios, l = precision_p[j, s] : -1 ],
         y_boundaries[i, 1] * z_RNMDT[j, l, s]  <= y_heat_RNMDT[i, j, l, s]) # 33
 
-    @constraint( RNMDT_problem, [ i = 1 : number_of_continuous_decision_variables, j = 1 : number_of_continuous_decision_variables, l = precision_p[j] : -1, s = 1 : number_of_scenarios],
+    @constraint( RNMDT_problem, [ i = 1 : number_of_continuous_decision_variables, j = 1 : number_of_continuous_decision_variables, s = 1 : number_of_scenarios, l = precision_p[j, s] : -1 ],
         y_heat_RNMDT[i, j, l, s] <= y_boundaries[i, 2] * z_RNMDT[j, l, s]) # 33
 
-    @constraint( RNMDT_problem, [ i = 1 : number_of_continuous_decision_variables, j = 1 : number_of_continuous_decision_variables, l = precision_p[j] : -1, s = 1:number_of_scenarios],
+    @constraint( RNMDT_problem, [ i = 1 : number_of_continuous_decision_variables, j = 1 : number_of_continuous_decision_variables, s = 1 : number_of_scenarios, l = precision_p[j, s] : -1 ],
         y_boundaries[i, 1] * (1 - z_RNMDT[j, l, s]) <= y[i,s] - y_heat_RNMDT[i, j, l, s] ) # 34
 
-    @constraint( RNMDT_problem, [ i = 1 : number_of_continuous_decision_variables, j = 1 : number_of_continuous_decision_variables, l = precision_p[j] : -1, s = 1:number_of_scenarios],
+    @constraint( RNMDT_problem, [ i = 1 : number_of_continuous_decision_variables, j = 1 : number_of_continuous_decision_variables, s = 1 : number_of_scenarios, l = precision_p[j, s] : -1 ],
         y[i,s] - y_heat_RNMDT[i, j, l, s] <= y_boundaries[i, 2] * (1 - z_RNMDT[j, l, s]) ) # 34
 
     # box constraints from original problem 4-3
@@ -163,10 +163,10 @@ end
 # auxiliary function for Lagrangian multipliers update
 f_lambda_lagrangian(lambda_lagrangian, dec_index) = (dec_index == 1 ? sum(lambda_lagrangian[1:end]) : - lambda_lagrangian[dec_index-1])
 
-function dynamic_precision_based_LD_RNDMT_problem_generation(precision_p, number_of_scenarios, number_of_integer_decision_variables, number_of_continuous_decision_variables, number_of_constrains, Qdensity)
+function dynamic_precision_based_LD_RNDMT_problem_generation(precision_p, number_of_scenarios, number_of_integer_decision_variables, number_of_continuous_decision_variables, number_of_constraints, Qdensity)
 
     # generating the parameters
-    constraint_Qs, constraint_fs, objective_Qs, objective_fs, objective_c, x_boundaries, y_boundaries = parameters_generation(number_of_scenarios, number_of_integer_decision_variables, number_of_continuous_decision_variables, number_of_constrains, Qdensity)
+    constraint_Qs, constraint_fs, objective_Qs, objective_fs, objective_c, x_boundaries, y_boundaries = parameters_generation(number_of_scenarios, number_of_integer_decision_variables, number_of_continuous_decision_variables, number_of_constraints, Qdensity)
 
     # randomized lagrangian relaxation variables for the x and y non anticipativity conditions written in the column
     vector_of_lambda_lagrangian = Array{Any}(undef, number_of_scenarios - 1)
@@ -179,7 +179,7 @@ function dynamic_precision_based_LD_RNDMT_problem_generation(precision_p, number
     # formulating the subproblems
     for s = 1 : number_of_scenarios
 
-        subproblem[s] = Model(with_optimizer(Gurobi.Optimizer,  OutputFlag = 0))
+        subproblem[s] = Model(with_optimizer(Gurobi.Optimizer,  OutputFlag = 0, MIPGap =  0, IntFeasTol = 1e-9, FeasibilityTol = 1e-9 ))
 
         # continuous decision variables
         @variable( subproblem[s], x[1 : number_of_integer_decision_variables], Int )
@@ -200,7 +200,7 @@ function dynamic_precision_based_LD_RNDMT_problem_generation(precision_p, number
 
         # objective with relaxed terms
         @objective( subproblem[s], Max,
-            round( (1/number_of_scenarios), digits = 2) *
+            round( (1/number_of_scenarios), digits = 3) *
 
             ( sum(objective_Qs[s][i, j] * w_RNMDT[i, j]
                 for i = 1 : number_of_continuous_decision_variables,
@@ -213,7 +213,7 @@ function dynamic_precision_based_LD_RNDMT_problem_generation(precision_p, number
 
         )
 
-        @constraint( subproblem[s], [ r = 1 : number_of_constrains ],
+        @constraint( subproblem[s], [ r = 1 : number_of_constraints ],
             sum(constraint_Qs[s][r][i, j] * w_RNMDT[i, j]
                 for i = 1 : number_of_continuous_decision_variables,
                 j = 1 : number_of_continuous_decision_variables)
@@ -224,20 +224,20 @@ function dynamic_precision_based_LD_RNDMT_problem_generation(precision_p, number
 
         @constraint( subproblem[s], [ j  = 1 : number_of_continuous_decision_variables],
             y[j] == (y_boundaries[j, 2] - y_boundaries[j, 1])  *
-            ( sum( 2.0^l * z_RNMDT[j, l] for l = precision_p[j] : -1) + delta_y_RNMDT[j] ) ) # 28
+            ( sum( 2.0^l * z_RNMDT[j, l] for l = precision_p[j, s] : -1) + delta_y_RNMDT[j] ) ) # 28
 
         @constraint( subproblem[s], [ i  = 1 : number_of_continuous_decision_variables, j = 1 : number_of_continuous_decision_variables ],
             w_RNMDT[i, j] == (y_boundaries[j, 2] - y_boundaries[j, 1]) *
-            ( sum( 2.0^l * y_heat_RNMDT[i, j, l] for l = precision_p[j] : -1) + delta_w_RNMDT[i, j] ) ) # 29
+            ( sum( 2.0^l * y_heat_RNMDT[i, j, l] for l = precision_p[j, s] : -1) + delta_w_RNMDT[i, j] ) ) # 29
 
         @constraint( subproblem[s], [ j  = 1 : number_of_continuous_decision_variables ],
-            0 <= delta_y_RNMDT[j] <= 2.0^precision_p[j] ) # 30
+            0 <= delta_y_RNMDT[j] <= 2.0^precision_p[j, s] ) # 30
 
         @constraint( subproblem[s], [ i = 1 : number_of_continuous_decision_variables, j = 1 : number_of_continuous_decision_variables],
-            2.0^precision_p[i] * ( y[i] - y_boundaries[i, 2] ) + y_boundaries[i, 2] * delta_y_RNMDT[j] <= delta_w_RNMDT[i, j]) # 31
+            2.0^precision_p[i, s] * ( y[i] - y_boundaries[i, 2] ) + y_boundaries[i, 2] * delta_y_RNMDT[j] <= delta_w_RNMDT[i, j]) # 31
 
         @constraint( subproblem[s], [ i = 1 : number_of_continuous_decision_variables, j = 1 : number_of_continuous_decision_variables],
-            delta_w_RNMDT[i, j] <= 2.0^precision_p[i] * ( y[i] - y_boundaries[i, 1] ) + y_boundaries[i, 1] * delta_y_RNMDT[j]) # 31
+            delta_w_RNMDT[i, j] <= 2.0^precision_p[i, s] * ( y[i] - y_boundaries[i, 1] ) + y_boundaries[i, 1] * delta_y_RNMDT[j]) # 31
 
         @constraint( subproblem[s], [ i = 1 : number_of_continuous_decision_variables, j = 1 : number_of_continuous_decision_variables],
             y_boundaries[i, 1] * delta_y_RNMDT[j] <= delta_w_RNMDT[i, j]) #32
@@ -245,16 +245,16 @@ function dynamic_precision_based_LD_RNDMT_problem_generation(precision_p, number
         @constraint( subproblem[s], [ i = 1 : number_of_continuous_decision_variables, j = 1 : number_of_continuous_decision_variables],
             delta_w_RNMDT[i, j] <= y_boundaries[i, 2] * delta_y_RNMDT[j]) # 32
 
-        @constraint( subproblem[s], [ i = 1 : number_of_continuous_decision_variables, j = 1 : number_of_continuous_decision_variables, l = precision_p[j] : -1],
+        @constraint( subproblem[s], [ i = 1 : number_of_continuous_decision_variables, j = 1 : number_of_continuous_decision_variables, l = precision_p[j, s] : -1],
             y_boundaries[i, 1] * z_RNMDT[j, l]  <= y_heat_RNMDT[i, j, l]) # 33
 
-        @constraint( subproblem[s], [ i = 1 : number_of_continuous_decision_variables, j = 1 : number_of_continuous_decision_variables, l = precision_p[j] : -1],
+        @constraint( subproblem[s], [ i = 1 : number_of_continuous_decision_variables, j = 1 : number_of_continuous_decision_variables, l = precision_p[j, s] : -1],
             y_heat_RNMDT[i, j, l] <= y_boundaries[i, 2] * z_RNMDT[j, l]) # 33
 
-        @constraint( subproblem[s], [ i = 1 : number_of_continuous_decision_variables, j = 1 : number_of_continuous_decision_variables, l = precision_p[j] : -1],
+        @constraint( subproblem[s], [ i = 1 : number_of_continuous_decision_variables, j = 1 : number_of_continuous_decision_variables, l = precision_p[j, s] : -1],
             y_boundaries[i, 1] * (1 - z_RNMDT[j, l]) <= y[i] - y_heat_RNMDT[i, j, l] ) # 34
 
-        @constraint( subproblem[s], [ i = 1 : number_of_continuous_decision_variables, j = 1 : number_of_continuous_decision_variables, l = precision_p[j] : -1],
+        @constraint( subproblem[s], [ i = 1 : number_of_continuous_decision_variables, j = 1 : number_of_continuous_decision_variables, l = precision_p[j, s] : -1],
             y[i] - y_heat_RNMDT[i, j, l] <= y_boundaries[i, 2] * (1 - z_RNMDT[j, l]) ) # 34
 
         # box constraints from original problem 4-3

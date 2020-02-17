@@ -57,7 +57,7 @@ function quadratic_matrix_generation(density, dimention, min_range, max_range, P
     return Q
 end
 
-function parameters_generation(number_of_scenarios, number_of_integer_decision_variables, number_of_continuous_decision_variables, number_of_constrains, Qdensity)
+function parameters_generation(number_of_scenarios, number_of_integer_decision_variables, number_of_continuous_decision_variables, number_of_constraints, Qdensity)
 
         Random.seed!(0)
 
@@ -86,7 +86,7 @@ function parameters_generation(number_of_scenarios, number_of_integer_decision_v
         constraint_Qs = Array{Any}(undef, 1, number_of_scenarios)
 
         [ constraint_Qs[i] = [ quadratic_matrix_generation(Qdensity, number_of_continuous_decision_variables, Min_value_for_matrix_elements, Max_value_for_matrix_elements, "no")
-            for j = 1 : number_of_constrains] for i = 1:number_of_scenarios ]
+            for j = 1 : number_of_constraints] for i = 1:number_of_scenarios ]
 
         # generating affine functions' coefficients for the left hand side of the constraint for each of the scenario
         constraint_fs = Array{Any}(undef, 1, number_of_scenarios)
@@ -94,7 +94,7 @@ function parameters_generation(number_of_scenarios, number_of_integer_decision_v
         [ constraint_fs[i] = [ round.([(Min_value_for_matrix_elements + (Max_value_for_matrix_elements - Min_value_for_matrix_elements)) .* [rand(1, number_of_integer_decision_variables) zeros(1, ( number_of_continuous_decision_variables > number_of_integer_decision_variables ) ? (number_of_continuous_decision_variables - number_of_integer_decision_variables) : 0 ) ];
                                 (Min_value_for_matrix_elements + (Max_value_for_matrix_elements - Min_value_for_matrix_elements)) .* [ rand(1, number_of_continuous_decision_variables) zeros(1, ( number_of_integer_decision_variables > number_of_continuous_decision_variables ) ? (number_of_integer_decision_variables - number_of_continuous_decision_variables) : 0 ) ];
                                 -Max_value_for_affine_constraint .* [rand(1,1) zeros(1, ( number_of_continuous_decision_variables > number_of_integer_decision_variables ) ? (number_of_continuous_decision_variables - 1) : (number_of_integer_decision_variables - 1))] ], digits = 1)
-            for j = 1:number_of_constrains] for i = 1:number_of_scenarios ]
+            for j = 1:number_of_constraints] for i = 1:number_of_scenarios ]
         # first row - x_coeficients (integer variables)
         # second row - y_coeficients (continuous variables)
         # third row  - constant
