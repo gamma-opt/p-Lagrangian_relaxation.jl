@@ -1,1 +1,0 @@
-"C:\\Program Files\\MATLAB\\R2016b\\bin\\matlab.exe" -wait -nodesktop -r "run 'C:\Artigos\p-LD\numerical experiments\v6\problema_convetido\Untitled_Julia.m'; quit"
