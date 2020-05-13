@@ -18,7 +18,7 @@ This package is authored by *Nikita Belyak* and *Fabricio Oliveira* and is a par
 
 ## problems formulation
 The noncovex MIQCQP problem of the form
- ``\LaTeX
+ ``
  \usepackage{amsmath}
 \begin{align}
 \text{RDE}: \text{max. } \quad  &  \sum_{s \in {\mathcal{S}}} P^s \left( \sum_{j \in \mathcal{VI}} I^{0}_j x_{j}^{s}  +  \sum_{i \in {\mathcal{VC}}}\sum_{j \in {\mathcal{VC}}} Q^{s, 0}_{i, j} y_{i}^{s} y_{j}^{s}  + \sum_{i \in {\mathcal{VC}}} C^{s,0}_{i} y_{i}^{s}\right) \label{decomposable_discretised_original_problem_objective} \\ \nonumber \\
