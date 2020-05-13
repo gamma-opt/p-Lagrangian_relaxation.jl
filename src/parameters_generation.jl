@@ -1,5 +1,6 @@
+using Random, LinearAlgebra, SparseArrays
 
-# auxiliary function for generating quadratic matrices for cosnstraints and obejctive with predefined densiity
+#--------------auxiliary function for generating quadratic matrices for cosnstraints and obejctive with predefined densiity
 function quadratic_matrix_generation(density, dimention, min_range, max_range, PSD, seed)
 
     Random.seed!(seed)
@@ -56,6 +57,8 @@ function quadratic_matrix_generation(density, dimention, min_range, max_range, P
 
     return Q
 end
+
+#--------------function for generation the parameters---------------------------
 
 function parameters_generation(number_of_scenarios, number_of_integer_decision_variables, number_of_continuous_decision_variables, number_of_constraints, Qdensity, seed)
 

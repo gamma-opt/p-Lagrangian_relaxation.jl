@@ -1,3 +1,5 @@
+using JuMP, Gurobi, Ipopt
+
 
 #--------------generating original JuMP problem---------------------------------
 
@@ -6,9 +8,8 @@ function original_problem_generation(number_of_scenarios, number_of_integer_deci
     # generating the parameters
     constraint_Qs, constraint_fs, objective_Qs, objective_fs, objective_c, x_boundaries, y_boundaries = parameters_generation(number_of_scenarios, number_of_integer_decision_variables, number_of_continuous_decision_variables, number_of_constraints, Qdensity, seed)
 
-    #original_problem = Model(with_optimizer(Ipopt.Optimizer, print_level=0))
-    #original_problem = Model(with_optimizer(Gurobi.Optimizer, NonConvex = 2, MIPFocus=3))
-    original_problem = Model( (is_fixed_int == "yes") ? ( with_optimizer(Ipopt.Optimizer, print_level=0) ) : ( with_optimizer(Gurobi.Optimizer, NonConvex = 2, MIPGap =  0, Method = 4, LogFile = link * "logfiles/$(number_of_scenarios)_scenarios_$(number_of_continuous_decision_variables)_cont_var_$(number_of_integer_decision_variables)_int_var_$(number_of_constraints)_constraints_$(seed)_seed_$(Dates.today())_original_model_logfile.txt", TimeLimit = time_limit, Threads = 1) ) )
+    # depending on whether the variables are fixed or not we use Ipopt and Gurobi as a solver respectively
+    original_problem = Model( (is_fixed_int == "yes") ? ( with_optimizer(Ipopt.Optimizer, print_level=0) ) : ( with_optimizer(Gurobi.Optimizer, NonConvex = 2, MIPGap =  0, Method = 4, OutputFlag=0, TimeLimit = time_limit, Threads = 1) ) )
 
     # integer decision variables
     if (is_fixed_int == "yes")
@@ -57,7 +58,7 @@ end
 
 #--------------generating mixed-integer based relaxations-----------------------
 
-function dynamic_precision_RNMDT_problem_generation(precision_p, number_of_scenarios, number_of_integer_decision_variables, number_of_continuous_decision_variables, number_of_constraints, Qdensity, time_limit, seed, TimeLimit = time_limit)
+function dynamic_precision_RNMDT_problem_generation(precision_p, number_of_scenarios, number_of_integer_decision_variables, number_of_continuous_decision_variables, number_of_constraints, Qdensity, time_limit, seed)
 
     # all the commments in this section refer to the paper
     # Enhancing the normalized multiparametric disaggregation
@@ -160,7 +161,7 @@ end
 # auxiliary function for Lagrangian multipliers update
 f_lambda_lagrangian(lambda_lagrangian, dec_index) = (dec_index == 1 ? sum(lambda_lagrangian[1:end]) : - lambda_lagrangian[dec_index-1])
 
-function dynamic_precision_based_LD_RNDMT_problem_generation(precision_p, number_of_scenarios, number_of_integer_decision_variables, number_of_continuous_decision_variables, number_of_constraints, Qdensity, seed, TimeLimit = time_limit)
+function dynamic_precision_based_LD_RNDMT_problem_generation(precision_p, number_of_scenarios, number_of_integer_decision_variables, number_of_continuous_decision_variables, number_of_constraints, Qdensity, seed)
 
     # generating the parameters
     constraint_Qs, constraint_fs, objective_Qs, objective_fs, objective_c, x_boundaries, y_boundaries = parameters_generation(number_of_scenarios, number_of_integer_decision_variables, number_of_continuous_decision_variables, number_of_constraints, Qdensity, seed)
@@ -177,7 +178,7 @@ function dynamic_precision_based_LD_RNDMT_problem_generation(precision_p, number
     # formulating the subproblems
     for s = 1 : number_of_scenarios
 
-        subproblem[s] = Model(with_optimizer(Gurobi.Optimizer, Method = 4, MIPGap =  0, Threads = 1, LogFile = loglink_par * "$(number_of_scenarios)_scenarios_$(number_of_continuous_decision_variables)_cont_var_$(number_of_integer_decision_variables)_int_var_$(number_of_constraints)_constraints_$(seed)_seed_$(Dates.today())_LD+RNDMT_par_instance$(s)_logfile.txt" )) #, IntFeasTol = 1e-9, FeasibilityTol = 1e-9 ))
+        subproblem[s] = Model(with_optimizer(Gurobi.Optimizer, Method = 4, OutputFlag=0, MIPGap =  0, Threads = 1))
 
         # continuous decision variables
         @variable( subproblem[s], x[1 : number_of_integer_decision_variables], Int )

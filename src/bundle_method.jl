@@ -1,4 +1,6 @@
-# the function containing the implementation of the Lagrangian decomposition
+using Suppressor
+
+# the function contains the implementation of the Lagrangian decomposition
 # with the bundle method multipliers update applied to the mixed integer based
 # relaxation of the original problem
 
@@ -64,7 +66,7 @@ function dynamic_precision_based_Lagrangian_decomposition_bundle(precision_p, nu
 
     #cutting_plane_subproblem = cutting_plane_subproblem_intial
 
-    cutting_plane_subproblem = Model(with_optimizer(Gurobi.Optimizer, Threads = 1, LogFile = loglink_par_bundle * "$(number_of_scenarios)_scenarios_$(number_of_continuous_decision_variables)_cont_var_$(number_of_integer_decision_variables)_int_var_$(number_of_constraints)_constraints_$(seed)_seed_$(Dates.today())_bundle_LD+RNDMT_par_logfile.txt" ))
+    cutting_plane_subproblem = Model(with_optimizer(Gurobi.Optimizer, Threads = 1, Method = 4)) #, LogFile = loglink_par_bundle * "$(number_of_scenarios)_scenarios_$(number_of_continuous_decision_variables)_cont_var_$(number_of_integer_decision_variables)_int_var_$(number_of_constraints)_constraints_$(seed)_seed_$(Dates.today())_bundle_LD+RNDMT_par_logfile.txt" ))
     @variables cutting_plane_subproblem begin
         z
         lagrangian_multipliers_representing_variable[ 1 : number_of_integer_decision_variables,
