@@ -1,7 +1,7 @@
 using JuMP, Gurobi, Ipopt
 
 
-#--------------generating original JuMP problem---------------------------------
+#--------------generating original MIQCQP JuMP problem---------------------------------
 
 function original_problem_generation(number_of_scenarios, number_of_integer_decision_variables, number_of_continuous_decision_variables, number_of_constraints, Qdensity, is_fixed_int, time_limit, seed)
 
@@ -47,8 +47,7 @@ function original_problem_generation(number_of_scenarios, number_of_integer_deci
     @constraint(original_problem, [s = 1 : number_of_scenarios],
         y_boundaries[:, 1] .<= y[:, s] .<= y_boundaries[:, 2])
 
-    # constraint 4-5
-    # non-anticipativity condition from original problem 4-5
+    # non-anticipativity conditions
     @constraint( original_problem, [s in 2 : number_of_scenarios, i = 1 : number_of_integer_decision_variables],
         x[i, s] - x[i, 1] == 0 )
 

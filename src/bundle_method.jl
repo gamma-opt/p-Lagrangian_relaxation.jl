@@ -64,8 +64,6 @@ function dynamic_precision_based_Lagrangian_decomposition_bundle(precision_p, nu
     # and summing up the values of the objective functions
     ub_of_original_problem = Array{Float64}(undef,1,1)
 
-    #cutting_plane_subproblem = cutting_plane_subproblem_intial
-
     cutting_plane_subproblem = Model(with_optimizer(Gurobi.Optimizer, Threads = 1, Method = 4)) #, LogFile = loglink_par_bundle * "$(number_of_scenarios)_scenarios_$(number_of_continuous_decision_variables)_cont_var_$(number_of_integer_decision_variables)_int_var_$(number_of_constraints)_constraints_$(seed)_seed_$(Dates.today())_bundle_LD+RNDMT_par_logfile.txt" ))
     @variables cutting_plane_subproblem begin
         z
@@ -77,43 +75,20 @@ function dynamic_precision_based_Lagrangian_decomposition_bundle(precision_p, nu
     m = 0.7
     d = 10
 
-    #d = ((dynamic_precision_algorithm_iteration == 1) ? 100 : 10)
-    #N_to_change_bundle_parameters = 10
-
     iteration = 0 #strating counter
 
     eps_stop = 100
-    #eps_stop = ((dynamic_precision_algorithm_iteration == 1) ? 100 : 10) # stopping criteria
 
     number_of_iteration_for_checking = 3
 
-    #iteration_time = SharedArray{Float64}(1, number_of_iterations)
-
     initial_time = time()
     while (iteration < number_of_iterations) & ((iteration > number_of_iteration_for_checking + 1 ) ? ( norm(dual_objective_value_at_lagrangian[iteration - number_of_iteration_for_checking : iteration-1] .- dual_objective_value_at_lagrangian[iteration - number_of_iteration_for_checking - 1 : iteration - 2]) >= eps_stop) : true)
-    #if (iteration > number_of_iteration_for_checking + 1 )
-        #print(norm(dual_objective_value_at_lagrangian[iteration - number_of_iteration_for_checking : iteration-1] .- dual_objective_value_at_lagrangian[iteration - number_of_iteration_for_checking - 1 : iteration - 2]))
-        #print("\n\n")
-    #end
-
-    #while (iteration < number_of_iterations) & ((iteration > number_of_iteration_for_checking+1) ? (auxiliary_check(vector_of_lambda_lagrangian, iteration, number_of_iteration_for_checking, number_of_scenarios, eps_stop) != 0 ) : true)
         iteration += 1
-        #print("iteration = $iteration\n")
-        #iteration_time[1, iteration] = 0
-        #if iteration > number_of_iteration_for_checking+1
-        #    print( norm.(vector_of_lambda_lagrangian[iteration, :] .- vector_of_lambda_lagrangian[iteration - 1, :]) .+ norm.(vector_of_lambda_lagrangian[iteration - 1, :] .- vector_of_lambda_lagrangian[iteration - 2, :])  .+ norm.(vector_of_lambda_lagrangian[iteration - 2, :] .- vector_of_lambda_lagrangian[iteration - 3, :]) )
-            #print(norm.(sum.(vector_of_lambda_lagrangian[iteration - 3 : iteration - 1, :] .- vector_of_lambda_lagrangian[iteration - 4 : iteration-2, :])))
-            #print("\n")
-            #print(auxiliary_check(vector_of_lambda_lagrangian, iteration, number_of_iteration_for_checking, number_of_scenarios, eps_stop))
-            #print("\n")
-            #print("\n")
-        #end
         ub_of_original_problem[1] = 0
 
         if parallelised  == "parallelised"
 
                 @suppress @sync Threads.@threads for s in 1 : number_of_scenarios
-                    #try_time = time()
                     #objective_update
                     @objective( subproblems[s], Max,
                         round( (1/number_of_scenarios), digits = 3) *
@@ -126,8 +101,6 @@ function dynamic_precision_based_Lagrangian_decomposition_bundle(precision_p, nu
                         +  sum( f_lambda_lagrangian( vector_of_lambda_lagrangian[iteration, :], s ) .* subproblems[s][:x] )
                     )
                     status = optimize!(subproblems[s])
-                    #iteration_time[1, iteration] = iteration_time[1, iteration] + (1/number_of_scenarios)*(time() - try_time)
-                    #print("intance $s optimisation time = $(iteration_time[1, iteration])\n")
                     obj_value = objective_value(subproblems[s])
 
                     ub_of_original_problem[1] = ub_of_original_problem[1] + obj_value
@@ -139,7 +112,6 @@ function dynamic_precision_based_Lagrangian_decomposition_bundle(precision_p, nu
 
         else
             @suppress for s in 1 : number_of_scenarios
-                #try_time = time()
                 #objective_update
                 @objective( subproblems[s], Max,
                     round( (1/number_of_scenarios), digits = 3) *
@@ -152,8 +124,6 @@ function dynamic_precision_based_Lagrangian_decomposition_bundle(precision_p, nu
                     +  sum( f_lambda_lagrangian( vector_of_lambda_lagrangian[iteration, :], s ) .* subproblems[s][:x] )
                 )
                 status = optimize!(subproblems[s])
-                #iteration_time[1, iteration] = iteration_time[1, iteration] + (1/number_of_scenarios)*(time() - try_time)
-                #print("intance $s optimisation time = $(iteration_time[1, iteration])\n")
                 obj_value = objective_value(subproblems[s])
 
                 ub_of_original_problem[1] = ub_of_original_problem[1] + obj_value
@@ -171,10 +141,7 @@ function dynamic_precision_based_Lagrangian_decomposition_bundle(precision_p, nu
         if iteration == 1
             center_of_gravity[iteration, :] = vector_of_lambda_lagrangian[iteration, :]
             dual_function_value_at_the_center_of_gravity[iteration] = dual_objective_value_at_lagrangian[iteration]
-
-        #elseif abs( dual_objective_value_at_lagrangian[iteration] - dual_function_value_at_the_center_of_gravity[iteration-1]) >= m * abs( relaxed_dual_objective_value[iteration-1] + d * (iteration-1) * sum( sum( (vector_of_lambda_lagrangian[iteration-1, s] .- center_of_gravity[iteration-1, s]) .^ 2 )  for s = 1 : number_of_scenarios - 1 ) - dual_objective_value_at_lagrangian[iteration-1] )
     elseif  dual_function_value_at_the_center_of_gravity[iteration-1] - dual_objective_value_at_lagrangian[iteration] >= m * ( dual_function_value_at_the_center_of_gravity[iteration-1] -  ( relaxed_dual_objective_value[iteration-1] + d * sum( sum( (vector_of_lambda_lagrangian[iteration, s] .- center_of_gravity[iteration-1, s]) .^ 2 )  for s = 1 : number_of_scenarios - 1 ) ) )
-            #print("left part $(dual_objective_value_at_lagrangian[iteration] - dual_function_value_at_the_center_of_gravity[iteration-1]), right part $( m * ( relaxed_dual_objective_value[iteration-1] - d * (iteration-1) * sum( sum( (vector_of_lambda_lagrangian[iteration-1, s] .- center_of_gravity[iteration-1, s]) .^ 2 )  for s = 1 : number_of_scenarios - 1 ) - dual_objective_value_at_lagrangian[iteration-1] ))  \n ")
             center_of_gravity[iteration, :] = vector_of_lambda_lagrangian[iteration, :]
             dual_function_value_at_the_center_of_gravity[iteration] = dual_objective_value_at_lagrangian[iteration]
             number_of_the_serious_steps = number_of_the_serious_steps + 1
@@ -194,36 +161,11 @@ function dynamic_precision_based_Lagrangian_decomposition_bundle(precision_p, nu
                 [ vector_of_lambda_lagrangian[iteration+1, s] = value.(cutting_plane_subproblem[:lagrangian_multipliers_representing_variable][:, s]) for s = 1 : number_of_scenarios - 1 ]
                 relaxed_dual_objective_value[iteration] = value.(cutting_plane_subproblem[:z])
             end
-        #if mod(iteration, N_to_change_bundle_parameters) == 0
-
-        #    d = 0.8 * d
-        #end
-        #print("iteration  =  $iteration \n \n")
-
-        #print("lag. mul. values  = \n")
-        #print(vector_of_lambda_lagrangian[iteration, :] )
-        #print("\n \n")
-
-        #print("Optimal value of dual objective with fixed lag. mul. values: $(dual_objective_value_at_lagrangian[iteration]) \n \n")
-
-        #print("decision_variables: \n")
-        #print(integer_decision_variables_values_for_each_scenario[:,:])
-        #print("\n \n")
-
-        #print("center of gravity = \n")
-        #print(center_of_gravity[iteration, :])
-        #print("\n \n")
-
-        #print("value of the dual function at the center of gravity = $(dual_function_value_at_the_center_of_gravity[iteration])\n \n")
-
-        #print("number of the serious steps = $number_of_the_serious_steps\n \n")
 
     end
 
     final_time = time()-initial_time
 
-
-    #return [dual_objective_value_at_lagrangian[1 : ( (iteration > number_of_iterations) ? number_of_iterations : iteration )], final_time, dual_function_value_at_the_center_of_gravity]
     return dual_objective_value_at_lagrangian[ iteration], integer_decision_variables_values_for_each_scenario[:, :], continuous_decision_variables_values_for_each_scenario[:, :], RNMDT_quadraticity_variables_w_for_each_scenario, vector_of_lambda_lagrangian[ 1 : iteration, :], number_of_the_serious_steps, center_of_gravity[iteration, :]
 
 end
