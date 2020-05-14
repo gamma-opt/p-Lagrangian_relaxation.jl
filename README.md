@@ -9,28 +9,14 @@ This package is authored by *Nikita Belyak* and *Fabricio Oliveira* and is a par
 
 <!-- TOC -->
 
-- [problems formulations](#problems_formulation)
-- [RNMDT relaxation](#rnmdt)
-- [Budnle method inspired p-lagrangian relaxation](#p-lr)
+- [Problems formulations](#problems_formulation)
+- [Solution methods](#solution_methods)
 - [Experiments](#experiments)
 
 <!-- /TOC -->
 
 ## problems formulation
-The noncovex MIQCQP problem of the form
- ``
- \usepackage{amsmath}
-\begin{align}
-\text{RDE}: \text{max. } \quad  &  \sum_{s \in {\mathcal{S}}} P^s \left( \sum_{j \in \mathcal{VI}} I^{0}_j x_{j}^{s}  +  \sum_{i \in {\mathcal{VC}}}\sum_{j \in {\mathcal{VC}}} Q^{s, 0}_{i, j} y_{i}^{s} y_{j}^{s}  + \sum_{i \in {\mathcal{VC}}} C^{s,0}_{i} y_{i}^{s}\right) \label{decomposable_discretised_original_problem_objective} \\ \nonumber \\
-\text{s.t.: } \quad & \sum_{i \in {\mathcal{VC}}}\sum_{j \in {\mathcal{VC}}} Q^{s, r}_ {i, j} y_{i}^{s} y_{j}^{s}   + \sum_{i \in {\mathcal{VC}}} C^{s,r}_{i} y_{i}^{s} +  \sum_{j \in {\mathcal{VI}}} I^{s, r}_{j} x_{j}^{s}  + K^{s,r}  \le 0,  \nonumber \\ & \quad \quad \quad \quad \quad \quad \quad \quad \quad \quad \quad \quad \quad \quad \quad \quad \quad  \forall s \in \mathcal{S}, \forall r \in \mathcal{R} \label{decomposable_discretised_original_problem_quadratic_constraint} \\
- & x_{j}^{s} \in \{X^L_{j}, \dots, X^U_{j}\},    \forall s \in \mathcal{S}  , \forall j \in \mathcal{VI} \label{decomposable_discretised_original_problem_box_constraint_integer} \\
- &  x_{j}^{s^\prime} - x_{j}^{s} = 0 ,   \forall s \in \mathcal{S} \setminus \{s^\prime\},  \forall j \in \mathcal{VI}  \label{decomposable_discretised_original_problem_non-anticipativity_constraint_integer} \\
- & \text{ and (\ref{discretised_original_problem_box_constraint_continuous}).} \nonumber&
-\end{align}
-
-``
-
-can be created by calling the function
+The noncovex MIQCQP problem can be created by calling the function
 
 ```julia
 
@@ -39,12 +25,102 @@ function original_problem_generation(number_of_scenarios, number_of_integer_deci
 ```
 where
 
-number_of_integer_decision_variables, number_of_continuous_decision_variables, number_of_constraints are defined per scenario,
+* number_of_integer_decision_variables, number_of_continuous_decision_variables, number_of_constraints are defined per scenario,
 
-Qdensity is a density of qudratic matrices,
+* Qdensity is a density of qudratic matrices,
 
-is_fixed_int a string parameter and should be set to "no",
+* is_fixed_int a string parameter and should be set to "no",
 
-time_limit corresposnds to the time limit for gurobi solver allowed for solving the problem
+* time_limit corresposnds to the time limit for gurobi solver allowed for solving the problem
 
-seed is a necesarry parameter for a randomisation and can be set to any integer number. s
+* seed is a necesarry parameter for a randomisation and can be set to any integer number.
+
+The RNMDT relaxation of the primal MIQCQP problem can be created by calling the function
+
+```julia
+function dynamic_precision_RNMDT_problem_generation(precision_p, number_of_scenarios, number_of_integer_decision_variables, number_of_continuous_decision_variables, number_of_constraints, Qdensity, time_limit, seed)
+```
+where
+
+* precision_p is a vector containg the values of the precision factor of each of the continuous variables
+
+* number_of_integer_decision_variables, number_of_continuous_decision_variables, number_of_constraints are defined per scenario,
+
+* Qdensity is a density of qudratic matrices,
+
+* is_fixed_int a string parameter and should be set to "no",
+
+* time_limit corresposnds to the time limit for gurobi solver allowed for solving the problem
+
+* seed is a necesarry parameter for a randomisation and can be set to any integer number.
+
+the vector of containg subprobles resulting from applying p-Lagrangian relxation can be created by calling the fucntion
+
+```julia
+function dynamic_precision_based_LD_RNDMT_problem_generation(precision_p, number_of_scenarios, number_of_integer_decision_variables, number_of_continuous_decision_variables, number_of_constraints, Qdensity, seed)
+```
+where
+
+* precision_p is a vector containg the values of the precision factor of each of the continuous variables
+
+* number_of_integer_decision_variables, number_of_continuous_decision_variables, number_of_constraints are defined per scenario,
+
+* Qdensity is a density of qudratic matrices,
+
+* is_fixed_int a string parameter and should be set to "no",
+
+* time_limit corresposnds to the time limit for gurobi solver allowed for solving the problem
+
+* seed is a necesarry parameter for a randomisation and can be set to any integer number.
+
+the vector of containg subprobles resulting from applying p-Lagrangian relxation can be created by calling the fucntion
+
+## solution_methods
+
+To solve the primal MIQCQP problem one can directly call the solver
+
+To solve the RNMDT relxation of the primal problem one can call the function
+
+```julia
+function dynamic_precision_RNMDT_algorithm(N1, N2, tolerance, time_limit, max_number_of_iterations, number_of_scenarios, number_of_integer_decision_variables, number_of_continuous_decision_variables, number_of_constraints, Qdensity, seed )
+```
+where
+
+* N1 is the number of variables for which the precision will increased every iteration that is not a multiple of N2
+
+* N2 is the number of iterations at wich the precision factors of the variables that have the hightest values will be decreased to ensure the general convergence
+
+* number_of_integer_decision_variables, number_of_continuous_decision_variables, number_of_constraints are defined per scenario,
+
+* Qdensity is a density of qudratic matrices,
+
+* is_fixed_int a string parameter and should be set to "no",
+
+* time_limit corresposnds to the time limit for gurobi solver allowed for solving the problem
+
+* seed is a necesarry parameter for a randomisation and can be set to any integer number.
+
+To solve p-Lagrangian relaxation of the primal MIQCQP problem usin dynamic precision-based algorithm one can call the function
+
+```julia
+
+dynamic_precision_LD_RNMDT_algorithm(N1, N2, tolerance, time_limit, max_number_of_iterations, number_of_scenarios, number_of_integer_decision_variables, number_of_continuous_decision_variables, number_of_constraints, Qdensity, parallelised, seed)
+
+```
+
+where
+* N1 is the number of variables for which the precision will increased every iteration that is not a multiple of N2
+
+* N2 is the number of iterations at wich the precision factors of the variables that have the hightest values will be decreased to ensure the general convergence
+
+* number_of_integer_decision_variables, number_of_continuous_decision_variables, number_of_constraints are defined per scenario,
+
+* Qdensity is a density of qudratic matrices,
+
+* is_fixed_int a string parameter and should be set to "no",
+
+* time_limit corresposnds to the time limit for gurobi solver allowed for solving the problem
+
+* parallelised is a string papramter that is equal to  if   "parallelised" if the computations should be performed in parpallel scnarios based and to "non_parallelised" otherwise 
+
+* seed is a necesarry parameter for a randomisation and can be set to any integer number.
