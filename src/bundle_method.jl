@@ -100,6 +100,8 @@ function dynamic_precision_based_Lagrangian_decomposition_bundle(precision_p, nu
                         )
                         +  sum( f_lambda_lagrangian( vector_of_lambda_lagrangian[iteration, :], s ) .* subproblems[s][:x] )
                     )
+
+                    #storing the optimal value of the obejective and variables of the p-LR with fixed multipliers
                     status = optimize!(subproblems[s])
                     obj_value = objective_value(subproblems[s])
 
@@ -123,6 +125,8 @@ function dynamic_precision_based_Lagrangian_decomposition_bundle(precision_p, nu
                     )
                     +  sum( f_lambda_lagrangian( vector_of_lambda_lagrangian[iteration, :], s ) .* subproblems[s][:x] )
                 )
+
+                #storing the optimal value of the obejective and variables of the p-LR with fixed multipliers
                 status = optimize!(subproblems[s])
                 obj_value = objective_value(subproblems[s])
 
@@ -134,11 +138,14 @@ function dynamic_precision_based_Lagrangian_decomposition_bundle(precision_p, nu
             end
         end
 
+
         dual_objective_value_at_lagrangian[iteration] = ub_of_original_problem[1]
 
+        #calculating the subgradient
         [ subgradient_vector[iteration,  s - 1] =  integer_decision_variables_values_for_each_scenario[ :, 1] - integer_decision_variables_values_for_each_scenario[ :, s] for  s in 2: number_of_scenarios ]
 
         if iteration == 1
+            # if it is the first iteration simply set the centre of gravity to the intial values of the Lagrngian multipliers
             center_of_gravity[iteration, :] = vector_of_lambda_lagrangian[iteration, :]
             dual_function_value_at_the_center_of_gravity[iteration] = dual_objective_value_at_lagrangian[iteration]
     elseif  dual_function_value_at_the_center_of_gravity[iteration-1] - dual_objective_value_at_lagrangian[iteration] >= m * ( dual_function_value_at_the_center_of_gravity[iteration-1] -  ( relaxed_dual_objective_value[iteration-1] + d * sum( sum( (vector_of_lambda_lagrangian[iteration, s] .- center_of_gravity[iteration-1, s]) .^ 2 )  for s = 1 : number_of_scenarios - 1 ) ) )
