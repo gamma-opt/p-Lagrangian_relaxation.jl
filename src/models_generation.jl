@@ -175,11 +175,11 @@ function dynamic_precision_based_LD_RNDMT_problem_generation(precision_p, number
     vector_of_lambda_lagrangian = Array{Any}(undef, number_of_scenarios - 1)
     [ vector_of_lambda_lagrangian[i] = 0 .+ 0.0 .* rand(1, number_of_integer_decision_variables)
             for i = 1 : number_of_scenarios - 1 ]
-å
+
     # creating the array of subproblems
     subproblem = Array{Any}(undef, 1, number_of_scenarios)
 
-    # formulating the subproblems based on the scenarios 
+    # formulating the subproblems based on the scenarios
     for s = 1 : number_of_scenarios
 
         subproblem[s] = Model(with_optimizer(Gurobi.Optimizer, Method = 4, OutputFlag=0, MIPGap =  0, Threads = 1))
