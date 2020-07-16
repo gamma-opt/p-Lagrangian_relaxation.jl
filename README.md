@@ -1,7 +1,7 @@
 # *p*-Lagrnaigan relaxation
 
 
-This package contains an implementation *p*-Lagrnagian relaxation method for the noncovnex MIQCQP problems. It includes the primal model formulation, it's rnmdt and *p*-LR relaxations and dynamic precision-based algorithm realisation in the context of RNMDT and *p*-Lagranion relaxation methods.
+This package contains an implementation of the *p*-Lagrnagian relaxation method for the noncovnex MIQCQP problems. It includes the primal model formulation, it's rnmdt and *p*-LR relaxations and dynamic precision-based algorithm realisation in the context of RNMDT and *p*-Lagranion relaxation methods.
 
 This package is authored by *Nikita Belyak* and *Fabricio Oliveira* and is a part of the study presented in the scientific paper *p*-Lagrnagian relaxation
 
