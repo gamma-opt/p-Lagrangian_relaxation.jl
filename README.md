@@ -1,9 +1,9 @@
-# *p*-Lagrnaigan relaxation
+# *p*-Lagrangian relaxation
 
 
-This package contains an implementation of the *p*-Lagrnagian relaxation method for the noncovnex MIQCQP problems. It includes the primal model formulation, it's RNMDT and *p*-LR relaxations and dynamic precision-based algorithm realisation in the context of RNMDT and *p*-Lagranion relaxation methods.
+This package contains an implementation of the *p*-Lagrangian relaxation method for the noncovnex MIQCQP problems. It includes the primal model formulation, it's RNMDT and *p*-LR relaxations and dynamic precision-based algorithm realisation in the context of RNMDT and *p*-Lagrangian relaxation methods.
 
-This package is authored by *Nikita Belyak* and *Fabricio Oliveira* and is a part of the study presented in the scientific paper *p*-Lagrnagian relaxation
+This package is authored by *Nikita Belyak* and *Fabricio Oliveira* and is a part of the study presented in the scientific paper *p*-Lagrangian relaxation
 
 **Contents**
 
@@ -78,7 +78,7 @@ the vector of containg subprobles resulting from applying *p*-Lagrangian relxati
 
 To solve the primal MIQCQP problem one can directly call the solver.
 
-To solve the RNMDT relxation of the primal problem using dyncamic precision-based algorithm one can call the function
+To solve the RNMDT relxation of the primal problem using dynamic precision-based algorithm, one must can call the function
 
 ```julia
 dynamic_precision_RNMDT_algorithm(N1, N2, tolerance, time_limit, max_number_of_iterations, number_of_scenarios, number_of_integer_decision_variables, number_of_continuous_decision_variables, number_of_constraints, Qdensity, seed )
@@ -95,7 +95,7 @@ where
 
 * is_fixed_int a string parameter and should be set to "no",
 
-* time_limit corresposnds to the time limit for gurobi solver allowed for solving the problem,
+* time_limit corresponds to the time limit for gurobi solver allowed for solving the problem,
 
 * seed is a necesarry parameter for a randomisation and can be set to any integer number.
 
@@ -114,13 +114,13 @@ where
 
 * number_of_integer_decision_variables, number_of_continuous_decision_variables, number_of_constraints are defined per scenario,
 
-* Qdensity is a density of qudratic matrices,
+* Qdensity is a density of quadratic matrices,
 
 * is_fixed_int a string parameter and should be set to "no",
 
 * time_limit corresposnds to the time limit for gurobi solver allowed for solving the problem,
 
-* parallelised is a string papramter that is equal to "parallelised" if the computations should be performed in parpallel and to "non_parallelised" otherwise,
+* parallelised is a string papramter that is equal to "parallelised" if the computations should be performed in parallel and to "non_parallelised" otherwise,
 
 * seed is a necesarry parameter for a randomisation and can be set to any integer number.
 
